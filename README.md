@@ -54,6 +54,8 @@ Assets/_Project/Scripts/
 - **Test edilebilir input:** `PlayerInputReader`, klasik Unity Input Manager’ı veya `IPlayerInputSource`/`PlayerInputSnapshot` enjeksiyonunu kullanabilir.
 - **Hareket ayarları:** `MechMovementConfig` hız, ivme, dönüş, dash, arena sınırı ve nişan menzilini ScriptableObject üzerinden sunar.
 - **Kamera:** `IsometricCameraRig` 50° eğimli takip, aim lead, sarsıntı ve taktik fener geçişini sağlar. `MechInteractionScanner`, 3.5 birim çevrede uygun en yakın hedefi bulur.
+- **Silah ve ısı:** `WeaponSystem`, sürekli ateşlenen plazma topunu ve bekleme süreli güdümlü mikro-füzeyi yönetir; HUD/Ses event’leri ısı, aşırı ısınma ve cooldown durumlarını bildirir. Parametreler `WeaponConfig` ScriptableObject’inde; atanmadığında güvenli varsayılanlar üretilir.
+- **Mermi yaşam döngüsü:** `ProjectileController` Instantiate edilen plazma/mikro-füze nesnelerini hareket ettirir, hedef/alan hasarını dost grupları koruyarak uygular ve çarpma/ömür sonunda Destroy ile temizler. `TimedEffectDestroyer` geçici görsel efektleri toplar.
 - **ScriptableObject yaklaşımı:** Düşman, dalga, yapı ve modül ayarları içerik verisi olarak tanımlanabilir; çalışma anındaki durum paylaşılan asset’lere yazılmaz.
 - **Nesne yaşam döngüsü:** Prototipte dinamik düşman, mermi ve enerji kristali üretimi `Instantiate`, sahneden kaldırılması `Destroy` ile gösterilir. Nesne havuzlama, performans profili ihtiyaç gösterirse eklenir.
 - **Yol bulma:** Düşman hareketi için Unity AI Navigation / NavMesh hedeflenir. Unity 6.0 için paket dokümantasyonu: [AI Navigation 2.0.9](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.ai.navigation.html).
@@ -64,7 +66,7 @@ Assets/_Project/Scripts/
 | --- | --- |
 | `W` `A` `S` `D` | Mech’i hareket ettir |
 | Fare | Silah kulesini hedefle |
-| Sol tık | Plazma topunu ateşle |
+| Sol tık (basılı) | Seri plazma topu |
 | Sağ tık | Mikro-füze ateşle |
 | `Space` | Dash / kaçınma |
 | `E` | Yakındaki terminal veya BuildNode ile etkileşim |
@@ -78,7 +80,7 @@ Input reader fare ateşini, silah/build/pause tuşlarını snapshot olarak sağl
 
 1. **Repo ve çekirdek mimari — tamamlandı:** Git düzeni, Unity proje iskeleti, sağlık/etkileşim arayüzleri, oyun durumu ve bootstrap.
 2. **Mech kontrol kodu — çekirdek hazır:** Input soyutlaması, hareket, bağımsız nişan, dash, etkileşim tarayıcısı ve kamera rig’i. Prefab/sahne bağlantısı ve oynanış ayarı sıradaki iş.
-3. **Savaş döngüsü:** Ateş/ısı, düşman üretimi, NavMesh takibi, kristal düşüşü ve reaktör savunması.
+3. **Savaş döngüsü — çekirdek hazır:** Çift modlu silah, aşırı ısınma/kilit, mermi güdümü/alan hasarı ve Instantiate/Destroy yaşam döngüsü. Düşman üretimi, NavMesh takibi, kristal düşüşü ve reaktör savunması sıradaki işler.
 4. **Taktik sistemler:** BuildNode yerleşimi, kuleler, terminal görevleri, dalga akışı ve modül seçimi.
 5. **Sunum ve dağıtım:** HUD/menüler, ses, dengeleme, WebGL performansı ve tarayıcı doğrulaması.
 
