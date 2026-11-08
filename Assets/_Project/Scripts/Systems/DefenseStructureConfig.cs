@@ -83,6 +83,12 @@ namespace AegisProtocol.Systems
             empPulseInterval = Mathf.Max(0.05f, empPulseInterval);
             repairPerSecond = Mathf.Max(0f, repairPerSecond);
             repairCapacityPerWave = Mathf.Max(0f, repairCapacityPerWave);
+            switch (structureType)
+            {
+                case DefenseStructureType.AutoLaserTurret: crystalCost = 50; break;
+                case DefenseStructureType.EmpSlowTower: crystalCost = 75; break;
+                case DefenseStructureType.RepairStation: crystalCost = 100; break;
+            }
         }
     }
 }

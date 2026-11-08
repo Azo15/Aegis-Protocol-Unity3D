@@ -14,7 +14,7 @@ namespace AegisProtocol.Systems
         private readonly HashSet<EnemyAIController> affectedEnemies = new HashSet<EnemyAIController>();
         private DefenseStructureConfig config;
         private BuildNode buildNode;
-        private Transform turretHead;
+        [SerializeField] private Transform turretHead = null;
         private HealthComponent mechHealth;
         private HealthComponent reactorHealth;
         private GameManager gameManager;
@@ -268,7 +268,8 @@ namespace AegisProtocol.Systems
             Renderer[] existing = GetComponentsInChildren<Renderer>();
             if (existing.Length > 0)
             {
-                turretHead = transform.childCount > 0 ? transform.GetChild(0) : transform;
+                if (turretHead == null)
+                    turretHead = transform.childCount > 0 ? transform.GetChild(transform.childCount - 1) : transform;
                 return;
             }
 

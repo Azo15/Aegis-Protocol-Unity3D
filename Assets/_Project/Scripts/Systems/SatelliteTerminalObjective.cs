@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using AegisProtocol.Core;
 
 namespace AegisProtocol.Systems
@@ -54,8 +53,8 @@ namespace AegisProtocol.Systems
                 return;
 
             float distance = Vector3.Distance(transform.position, playerMech.transform.position);
-            if (distance <= hackRadius)
-                hackActivated = true;
+            if (distance <= hackRadius && !hackActivated)
+                ActivateHack();
             if (!hackActivated || distance > hackRadius)
                 return;
 
@@ -74,7 +73,13 @@ namespace AegisProtocol.Systems
         public void Interact(GameObject interactor)
         {
             if (!isCompleted)
-                hackActivated = true;
+                ActivateHack();
+        }
+
+        private void ActivateHack()
+        {
+            hackActivated = true;
+            ApplyVisualState(activeColor, true);
         }
 
         private void ResolvePlayerMech()
