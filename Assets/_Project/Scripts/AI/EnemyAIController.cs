@@ -91,7 +91,7 @@ namespace AegisProtocol.AI
 
             if (kamikaze && distance <= archetype.AttackRange)
             {
-                Detonate(targetPosition);
+                Detonate(targetPosition, target);
                 return;
             }
 
@@ -235,7 +235,7 @@ namespace AegisProtocol.AI
                 specialAttackTimer = Time.time + Mathf.Max(3f, archetype.AttackCooldown * 3f);
         }
 
-        private void Detonate(Vector3 center)
+        private void Detonate(Vector3 center, HealthComponent directTarget)
         {
             if (isDetonating)
                 return;
@@ -257,6 +257,8 @@ namespace AegisProtocol.AI
                     candidate.TakeDamage(archetype.AttackDamage, gameObject);
             }
 
+            if (CanDamageTarget(directTarget) && affectedByExplosion.Add(directTarget))
+                directTarget.TakeDamage(archetype.AttackDamage, gameObject);
             health.TakeDamage(health.CurrentHealth, gameObject);
         }
 

@@ -26,6 +26,7 @@ namespace AegisProtocol.Systems
     }
 
     /// <summary>Spawns the five siege waves and awards no-damage and final-reactor bonuses.</summary>
+    [DefaultExecutionOrder(1100)]
     [DisallowMultipleComponent]
     public sealed class WaveSpawnerManager : MonoBehaviour
     {
@@ -123,8 +124,10 @@ namespace AegisProtocol.Systems
             reactorDamagedThisWave = false;
             reactorHealth = reactorHealth != null ? reactorHealth : FindHealthRole(HealthRole.Reactor);
             if (reactorHealth != null)
+            {
                 reactorHealth.OnDamaged += HandleReactorDamaged;
                 subscribedToReactorDamage = true;
+            }
 
             if (waveNumber == 3)
                 ApplyNightLighting();

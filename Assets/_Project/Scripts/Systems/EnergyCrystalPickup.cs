@@ -12,7 +12,6 @@ namespace AegisProtocol.Systems
         [SerializeField, Min(0.1f)] private float attractionSpeed = 12f;
         [SerializeField, Min(0f)] private float collectDistance = 0.45f;
         [SerializeField, Min(0.01f)] private float maxLifetime = 30f;
-        [SerializeField] private GameObject instigator = null;
 
         private Transform playerTarget;
         private CrystalResourceBank resourceBank;
@@ -58,11 +57,10 @@ namespace AegisProtocol.Systems
                 Collect();
         }
 
-        /// <summary>Sets drop values and ownership immediately after Instantiate.</summary>
-        public void Initialize(int amount, GameObject owner = null)
+        /// <summary>Sets the drop value immediately after Instantiate.</summary>
+        public void Initialize(int amount)
         {
             crystalAmount = Mathf.Max(1, amount);
-            instigator = owner;
             lifetimeRemaining = maxLifetime;
             ResolvePlayerTarget();
         }
