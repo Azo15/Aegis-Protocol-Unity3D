@@ -88,6 +88,24 @@ namespace AegisProtocol.Core
                 OnDeath?.Invoke(this, instigator);
         }
 
+        /// <summary>Assigns a gameplay role and maximum health before objective registration.</summary>
+        public void Configure(HealthRole newRole, float configuredMaxHealth, bool refillCurrentHealth = true)
+        {
+            float previousHealth = currentHealth;
+            role = newRole;
+            maxHealth = role == HealthRole.Reactor
+                ? ReactorDefaultMaxHealth
+                : Mathf.Max(1f, configuredMaxHealth);
+
+            if (!initialized || refillCurrentHealth)
+                currentHealth = maxHealth;
+            else
+                currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
+
+            initialized = true;
+            if (!Mathf.Approximately(previousHealth, currentHealth))
+                OnHealthChanged?.Invoke(this, previousHealth, currentHealth);
+        }
         /// <summary>Restores health without exceeding the configured maximum.</summary>
         public void Heal(float amount)
         {
@@ -121,3 +139,4 @@ namespace AegisProtocol.Core
         }
     }
 }
+
