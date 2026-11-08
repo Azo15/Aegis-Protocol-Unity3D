@@ -1,0 +1,647 @@
+using System;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using AegisProtocol.Audio;
+using AegisProtocol.AI;
+using AegisProtocol.Combat;
+using AegisProtocol.Core;
+using AegisProtocol.Systems;
+
+namespace AegisProtocol.UI
+{
+    /// <summary>Creates and controls the complete runtime uGUI menu, HUD, and card selection flow.</summary>
+    [DefaultExecutionOrder(1300)]
+    [DisallowMultipleComponent]
+    public sealed class UIManager : MonoBehaviour
+    {
+        private static readonly Color BackgroundColor = new Color(0.015f, 0.035f, 0.075f, 0.96f);
+        private static readonly Color PanelColor = new Color(0.025f, 0.09f, 0.15f, 0.96f);
+        private static readonly Color AccentColor = new Color(0.05f, 0.85f, 1f, 1f);
+
+        private GameManager gameManager;
+        private PlayerInputReader inputReader;
+        private HealthComponent mechHealth;
+        private HealthComponent reactorHealth;
+        private WeaponSystem weaponSystem;
+        private MechController mechController;
+        private CrystalResourceBank resourceBank;
+        private TacticalBuildManager buildManager;
+        private MechInteractionScanner interactionScanner;
+        private RogueliteUpgradeManager upgradeManager;
+        private AudioManager audioManager;
+
+        private GameObject mainPanel;
+        private GameObject briefingPanel;
+        private GameObject howToPanel;
+        private GameObject settingsPanel;
+        private GameObject hudPanel;
+        private GameObject upgradePanel;
+        private GameObject pausePanel;
+        private GameObject resultPanel;
+        private Text resultTitle;
+        private Text resultDetails;
+        private Text buildSelectionText;
+        private Text interactPromptText;
+        private Text waveText;
+        private Text scoreText;
+        private Text timerText;
+        private Text terminalText;
+        private Text mechHealthText;
+        private Text reactorHealthText;
+        private Text heatText;
+        private Text missileText;
+        private Text dashText;
+        private Text crystalText;
+        private Text[] upgradeCardTexts = Array.Empty<Text>();
+        private Slider mechHealthBar;
+        private Slider reactorHealthBar;
+        private Slider heatBar;
+        private Slider missileBar;
+        private Slider dashBar;
+        private Font runtimeFont;
+        private UpgradeModuleCardConfig[] presentedCards = Array.Empty<UpgradeModuleCardConfig>();
+        private GameState stateBeforeAuxiliaryPanel = GameState.MainMenu;
+        private float targetDurationSeconds = 900f;
+
+        private void Awake()
+        {
+            BuildRuntimeCanvas();
+            CreateAllScreens();
+        }
+
+        private void Start()
+        {
+            ResolveSystems();
+            if (gameManager != null)
+            {
+                gameManager.OnGameStateChanged += HandleGameStateChanged;
+                SetVisibleState(gameManager.CurrentState);
+                targetDurationSeconds = gameManager.ElapsedSeconds + gameManager.RemainingSeconds;
+            }
+            if (upgradeManager != null)
+                upgradeManager.OnUpgradeOptionsPresented += HandleUpgradeOptionsPresented;
+        }
+
+        private void OnDestroy()
+        {
+            if (gameManager != null)
+                gameManager.OnGameStateChanged -= HandleGameStateChanged;
+            if (upgradeManager != null)
+                upgradeManager.OnUpgradeOptionsPresented -= HandleUpgradeOptionsPresented;
+            Time.timeScale = 1f;
+        }
+
+        private void Update()
+        {
+            ResolveSystemsIfNeeded();
+            if (inputReader != null)
+            {
+                PlayerInputSnapshot input = inputReader.CurrentSnapshot;
+                if (input.PausePressed && gameManager != null)
+                {
+                    if (gameManager.CurrentState == GameState.Paused)
+                        gameManager.Resume();
+                    else
+                        gameManager.Pause();
+                }
+
+                if (gameManager != null && gameManager.CurrentState == GameState.WaveUpgradeSelection)
+                {
+                    if (input.BuildSlot1Pressed)
+                        SelectUpgrade(0);
+                    else if (input.BuildSlot2Pressed)
+                        SelectUpgrade(1);
+                    else if (input.BuildSlot3Pressed)
+                        SelectUpgrade(2);
+                }
+            }
+
+            UpdateHud();
+        }
+
+        private void BuildRuntimeCanvas()
+        {
+            GameObject canvasObject = new GameObject("Aegis Runtime Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            canvasObject.transform.SetParent(transform, false);
+            Canvas canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 100;
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            if (FindFirstObjectByType<EventSystem>() == null)
+            {
+                GameObject eventObject = new GameObject("Aegis Event System", typeof(EventSystem), typeof(StandaloneInputModule));
+                DontDestroyOnLoad(eventObject);
+            }
+
+            runtimeFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            if (runtimeFont == null)
+                runtimeFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
+        private void CreateAllScreens()
+        {
+            mainPanel = CreatePanel("Main Menu", BackgroundColor);
+            BuildMainMenu(mainPanel.transform);
+            briefingPanel = CreatePanel("Mission Briefing", BackgroundColor);
+            BuildBriefing(briefingPanel.transform);
+            howToPanel = CreatePanel("How To Play", BackgroundColor);
+            BuildHowToPlay(howToPanel.transform);
+            settingsPanel = CreatePanel("Audio Settings", BackgroundColor);
+            BuildSettings(settingsPanel.transform);
+            hudPanel = CreatePanel("Gameplay HUD", new Color(0f, 0f, 0f, 0f));
+            BuildHud(hudPanel.transform);
+            upgradePanel = CreatePanel("Upgrade Selection", BackgroundColor);
+            BuildUpgradeScreen(upgradePanel.transform);
+            pausePanel = CreatePanel("Pause Menu", BackgroundColor);
+            BuildPauseMenu(pausePanel.transform);
+            resultPanel = CreatePanel("Mission Result", BackgroundColor);
+            BuildResultScreen(resultPanel.transform);
+            SetVisibleState(GameState.MainMenu);
+        }
+
+        private void BuildMainMenu(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 700f, 820f);
+            CreateText(content, "AEGIS PROTOCOL", 52, AccentColor, 82f, FontStyle.Bold);
+            CreateText(content, "3D TACTICAL MECH & BASE DEFENSE", 22, Color.white, 48f, FontStyle.Bold);
+            AddButton(content, "OYUNA BAŞLA", () => gameManager?.StartRun(), 62f);
+            AddButton(content, "NASIL OYNANIR & PUAN TABLOSU", () => ShowAuxiliaryPanel(howToPanel), 56f);
+            AddButton(content, "SES AYARLARI", () => ShowAuxiliaryPanel(settingsPanel), 56f);
+            AddButton(content, "ÇIKIŞ", Application.Quit, 56f);
+        }
+
+        private void BuildBriefing(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 900f, 900f);
+            CreateText(content, "GÖREV BRİFİNGİ", 38, AccentColor, 66f, FontStyle.Bold);
+            CreateText(content,
+                "Kuantum Reaktörünü beş kuşatma dalgası boyunca savun.\n" +
+                "Üç uydu iletişim terminalini sinyal alanında 30 saniye kalarak hackle.\n" +
+                "Beşinci dalgada Overlord Titan'ı ve tüm muhafızlarını yok et.\n\n" +
+                "Kazanma: 5 dalga + 3 terminal + Overlord Titan.\n" +
+                "Kaybetme: Mech veya Reaktör HP sıfıra düşerse.\n" +
+                "Puan: düşman ödülleri, +300 hasarsız dalga, terminal başına +500, kalan Reaktör HP ×10.\n\n" +
+                "WASD hareket • Fare nişan • Sol tık plazma • Sağ tık füze • Space dash\n" +
+                "E etkileşim/inşa • 1/2/3 yapı seçimi • Esc/P duraklatma • F taktik fener",
+                20, Color.white, 390f, FontStyle.Normal);
+            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 64f);
+            AddButton(content, "ANA MENÜ", () => gameManager?.ReturnToMainMenu(), 52f);
+        }
+
+        private void BuildHowToPlay(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 860f, 820f);
+            CreateText(content, "NASIL OYNANIR & PUAN TABLOSU", 34, AccentColor, 64f, FontStyle.Bold);
+            CreateText(content,
+                "WASD: Mech hareketi | Fare: bağımsız kule nişanı\n" +
+                "Sol tık: seri plazma | Sağ tık: güdümlü AoE füze\n" +
+                "Space: dash | E: BuildNode / uydu terminali\n" +
+                "1: Lazer (50) | 2: EMP (75) | 3: Onarım (100)\n" +
+                "Esc/P: duraklat | F: taktik fener\n\n" +
+                "Scout Drone +50 | Ranged Striker +100\n" +
+                "Heavy Siege Mech +250 | Overlord Titan +1500\n" +
+                "Terminal hack +500 | Hasarsız dalga +300\n" +
+                "Son dalga Reaktör bonusu: kalan HP ×10",
+                22, Color.white, 360f, FontStyle.Normal);
+            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 58f);
+        }
+
+        private void BuildSettings(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 760f, 700f);
+            CreateText(content, "SES AYARLARI", 38, AccentColor, 64f, FontStyle.Bold);
+            AddVolumeSlider(content, "MASTER", 0.8f, value => audioManager?.SetMasterVolume(value));
+            AddVolumeSlider(content, "MÜZİK", 0.45f, value => audioManager?.SetBgmVolume(value));
+            AddVolumeSlider(content, "SES EFEKTLERİ", 0.8f, value => audioManager?.SetSfxVolume(value));
+            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 58f);
+        }
+
+        private void BuildPauseMenu(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 700f, 760f);
+            CreateText(content, "SİSTEM DURAKLATILDI", 40, AccentColor, 72f, FontStyle.Bold);
+            AddButton(content, "DEVAM ET", () => gameManager?.Resume(), 62f);
+            AddButton(content, "BÖLÜMÜ YENİDEN BAŞLAT", RestartCurrentScene, 58f);
+            AddButton(content, "SES SEVİYESİ", () => ShowAuxiliaryPanel(settingsPanel), 56f);
+            AddButton(content, "ANA MENÜYE DÖN", ReturnToMainMenu, 56f);
+        }
+
+        private void BuildResultScreen(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 850f, 720f);
+            resultTitle = CreateText(content, "GÖREV SONUCU", 42, AccentColor, 72f, FontStyle.Bold);
+            resultDetails = CreateText(content, string.Empty, 24, Color.white, 220f, FontStyle.Normal);
+            AddButton(content, "TEKRAR OYNA", RestartCurrentScene, 62f);
+            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 56f);
+        }
+
+        private void BuildUpgradeScreen(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 1060f, 900f);
+            CreateText(content, "DALGA YÜKSELTME SEÇİMİ", 38, AccentColor, 64f, FontStyle.Bold);
+            CreateText(content, "Bir modül seç: tıklayın veya 1 / 2 / 3 tuşuna basın.", 20, Color.white, 46f, FontStyle.Normal);
+            upgradeCardTexts = new Text[3];
+            for (int i = 0; i < upgradeCardTexts.Length; i++)
+            {
+                int optionIndex = i;
+                upgradeCardTexts[i] = AddButton(content, "Kart yükleniyor...", () => SelectUpgrade(optionIndex), 170f, 19);
+            }
+        }
+
+        private void BuildHud(Transform parent)
+        {
+            mechHealthText = CreateHudText(parent, "MECH HP", new Vector2(28f, -28f), new Vector2(0f, 1f), 22, TextAnchor.UpperLeft);
+            mechHealthBar = CreateHudBar(parent, new Vector2(30f, -60f), new Vector2(0f, 1f), new Vector2(360f, 20f), new Color(0.1f, 0.85f, 1f));
+            reactorHealthText = CreateHudText(parent, "REAKTÖR HP", new Vector2(28f, -94f), new Vector2(0f, 1f), 22, TextAnchor.UpperLeft);
+            reactorHealthBar = CreateHudBar(parent, new Vector2(30f, -126f), new Vector2(0f, 1f), new Vector2(360f, 20f), new Color(0.2f, 1f, 0.4f));
+
+            waveText = CreateHudText(parent, string.Empty, new Vector2(-30f, -28f), new Vector2(1f, 1f), 23, TextAnchor.UpperRight);
+            timerText = CreateHudText(parent, string.Empty, new Vector2(-30f, -64f), new Vector2(1f, 1f), 20, TextAnchor.UpperRight);
+            scoreText = CreateHudText(parent, string.Empty, new Vector2(-30f, -98f), new Vector2(1f, 1f), 20, TextAnchor.UpperRight);
+            terminalText = CreateHudText(parent, string.Empty, new Vector2(-30f, -132f), new Vector2(1f, 1f), 20, TextAnchor.UpperRight);
+
+            heatText = CreateHudText(parent, "HEAT", new Vector2(0f, 142f), new Vector2(0.5f, 0f), 20, TextAnchor.MiddleCenter);
+            heatBar = CreateHudBar(parent, new Vector2(0f, 116f), new Vector2(0.5f, 0f), new Vector2(440f, 22f), new Color(1f, 0.35f, 0.05f));
+            missileText = CreateHudText(parent, "MISSILE", new Vector2(-230f, 82f), new Vector2(0.5f, 0f), 17, TextAnchor.MiddleCenter);
+            missileBar = CreateHudBar(parent, new Vector2(-230f, 60f), new Vector2(0.5f, 0f), new Vector2(180f, 14f), new Color(1f, 0.6f, 0.1f));
+            dashText = CreateHudText(parent, "DASH", new Vector2(230f, 82f), new Vector2(0.5f, 0f), 17, TextAnchor.MiddleCenter);
+            dashBar = CreateHudBar(parent, new Vector2(230f, 60f), new Vector2(0.5f, 0f), new Vector2(180f, 14f), AccentColor);
+            crystalText = CreateHudText(parent, string.Empty, new Vector2(0f, 40f), new Vector2(0.5f, 0f), 21, TextAnchor.MiddleCenter);
+            buildSelectionText = CreateHudText(parent, string.Empty, new Vector2(0f, 0f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
+            interactPromptText = CreateHudText(parent, string.Empty, new Vector2(0f, 195f), new Vector2(0.5f, 0f), 20, TextAnchor.MiddleCenter);
+        }
+
+        private void ResolveSystems()
+        {
+            gameManager = GameManager.Instance;
+            inputReader = FindFirstObjectByType<PlayerInputReader>();
+            mechHealth = FindHealthRole(HealthRole.PlayerMech);
+            reactorHealth = FindHealthRole(HealthRole.Reactor);
+            weaponSystem = FindFirstObjectByType<WeaponSystem>();
+            mechController = FindFirstObjectByType<MechController>();
+            resourceBank = CrystalResourceBank.Instance;
+            buildManager = FindFirstObjectByType<TacticalBuildManager>();
+            interactionScanner = FindFirstObjectByType<MechInteractionScanner>();
+            upgradeManager = FindFirstObjectByType<RogueliteUpgradeManager>();
+            audioManager = AudioManager.Instance;
+        }
+
+        private void ResolveSystemsIfNeeded()
+        {
+            if (gameManager == null || inputReader == null || mechHealth == null || reactorHealth == null ||
+                weaponSystem == null || resourceBank == null || buildManager == null || interactionScanner == null ||
+                upgradeManager == null || audioManager == null)
+            {
+                ResolveSystems();
+            }
+        }
+
+        private void UpdateHud()
+        {
+            if (hudPanel == null || !hudPanel.activeSelf)
+                return;
+
+            SetHealthBar(mechHealth, mechHealthBar, mechHealthText, "MECH");
+            SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "REAKTÖR");
+            if (gameManager != null)
+            {
+                waveText.text = $"DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5";
+                float targetTime = Mathf.Max(targetDurationSeconds, gameManager.ElapsedSeconds + gameManager.RemainingSeconds);
+                timerText.text = $"SÜRE {FormatTime(gameManager.ElapsedSeconds)} / {FormatTime(targetTime)}";
+                scoreText.text = $"SKOR {gameManager.TotalScore:N0}";
+                terminalText.text = $"UYDU {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
+            }
+
+            if (weaponSystem != null)
+            {
+                heatBar.value = weaponSystem.MaximumHeat <= 0f ? 0f : weaponSystem.CurrentHeat / weaponSystem.MaximumHeat;
+                heatText.text = weaponSystem.IsOverheated
+                    ? $"AŞIRI ISINMA - KİLİTLİ ({weaponSystem.OverheatRemaining:0.0}s)"
+                    : $"ISI {weaponSystem.CurrentHeat:0}/{weaponSystem.MaximumHeat:0}";
+                heatText.color = weaponSystem.IsOverheated ? Color.red : Color.white;
+                missileBar.value = weaponSystem.MissileCooldownNormalized;
+                missileText.text = weaponSystem.MissileCooldownRemaining > 0f
+                    ? $"FÜZE {weaponSystem.MissileCooldownRemaining:0.0}s"
+                    : "FÜZE HAZIR";
+            }
+
+            if (mechController != null)
+            {
+                dashBar.value = mechController.DashCooldownNormalized;
+                dashText.text = mechController.DashCooldownRemaining > 0f
+                    ? $"DASH {mechController.DashCooldownRemaining:0.0}s"
+                    : "DASH HAZIR";
+            }
+
+            if (resourceBank != null)
+                crystalText.text = $"ENERJİ KRİSTALİ: {resourceBank.CurrentBalance}";
+            if (buildManager != null)
+                buildSelectionText.text = $"[1] LAZER 50   [2] EMP 75   [3] ONARIM 100   | SEÇİLİ: {buildManager.SelectedStructureType}";
+            if (interactionScanner != null)
+                interactPromptText.text = string.IsNullOrEmpty(interactionScanner.CurrentPrompt)
+                    ? string.Empty
+                    : $"[E] {interactionScanner.CurrentPrompt}";
+        }
+
+        private void HandleGameStateChanged(GameStateChangedEvent change)
+        {
+            SetVisibleState(change.CurrentState);
+            if (change.CurrentState == GameState.Victory || change.CurrentState == GameState.Defeat)
+                UpdateResultSummary(change.CurrentState);
+        }
+
+        private void HandleUpgradeOptionsPresented(UpgradeModuleCardConfig[] cards)
+        {
+            presentedCards = cards ?? Array.Empty<UpgradeModuleCardConfig>();
+            for (int i = 0; i < upgradeCardTexts.Length; i++)
+            {
+                if (i < presentedCards.Length && presentedCards[i] != null)
+                    upgradeCardTexts[i].text = $"{i + 1}.  {presentedCards[i].DisplayName}\n\n{presentedCards[i].Description}";
+                else
+                    upgradeCardTexts[i].text = "KART YOK";
+            }
+        }
+
+        private void SelectUpgrade(int optionIndex)
+        {
+            if (upgradeManager != null)
+                upgradeManager.SelectUpgrade(optionIndex);
+        }
+
+        private void SetVisibleState(GameState state)
+        {
+            SetPanel(mainPanel, state == GameState.MainMenu);
+            SetPanel(briefingPanel, state == GameState.Briefing);
+            SetPanel(hudPanel, state == GameState.WaveActive);
+            SetPanel(upgradePanel, state == GameState.WaveUpgradeSelection);
+            SetPanel(pausePanel, state == GameState.Paused);
+            SetPanel(resultPanel, state == GameState.Victory || state == GameState.Defeat);
+            SetPanel(howToPanel, false);
+            SetPanel(settingsPanel, false);
+            if (state == GameState.Victory || state == GameState.Defeat)
+                UpdateResultSummary(state);
+        }
+
+        private void UpdateResultSummary(GameState state)
+        {
+            if (resultTitle == null || resultDetails == null || gameManager == null)
+                return;
+
+            bool victory = state == GameState.Victory;
+            resultTitle.text = victory
+                ? "GÖREV BAŞARILI: KUANTUM REAKTÖRÜ KORUNDU"
+                : "GÖREV BAŞARISIZ";
+            resultTitle.color = victory ? AccentColor : new Color(1f, 0.25f, 0.2f);
+            resultDetails.text =
+                $"TOPLAM SKOR: {gameManager.TotalScore:N0}\n" +
+                $"HAYATTA KALINAN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
+                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5\n" +
+                $"TAMAMLANAN TERMİNAL: {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
+        }
+
+        private void ShowAuxiliaryPanel(GameObject panel)
+        {
+            stateBeforeAuxiliaryPanel = gameManager != null ? gameManager.CurrentState : GameState.MainMenu;
+            SetAllPanelsInactive();
+            SetPanel(panel, true);
+        }
+
+        private void RestartCurrentScene()
+        {
+            if (gameManager != null)
+                gameManager.StartRun();
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.IsValid() && scene.buildIndex >= 0)
+                SceneManager.LoadScene(scene.buildIndex);
+        }
+
+        private void ReturnToMainMenu()
+        {
+            if (gameManager != null)
+                gameManager.ReturnToMainMenu();
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.IsValid() && scene.buildIndex >= 0)
+                SceneManager.LoadScene(scene.buildIndex);
+        }
+
+        private GameObject CreatePanel(string name, Color color)
+        {
+            GameObject panel = new GameObject(name, typeof(RectTransform), typeof(Image));
+            panel.transform.SetParent(transform.GetChild(0), false);
+            RectTransform rect = panel.GetComponent<RectTransform>();
+            Stretch(rect);
+            Image image = panel.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = color.a > 0.05f;
+            return panel;
+        }
+
+        private Transform CreateVerticalContent(Transform parent, float width, float height)
+        {
+            GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup));
+            content.transform.SetParent(parent, false);
+            RectTransform rect = content.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(width, height);
+            VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.spacing = 10f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            return content.transform;
+        }
+
+        private Text CreateText(Transform parent, string value, int size, Color color, float preferredHeight, FontStyle style)
+        {
+            GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            textObject.transform.SetParent(parent, false);
+            Text text = textObject.GetComponent<Text>();
+            text.font = runtimeFont;
+            text.text = value;
+            text.fontSize = size;
+            text.color = color;
+            text.fontStyle = style;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            textObject.GetComponent<LayoutElement>().preferredHeight = preferredHeight;
+            return text;
+        }
+
+        private Text AddButton(Transform parent, string label, Action onClick, float height, int fontSize = 22)
+        {
+            GameObject buttonObject = new GameObject("Button - " + label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            buttonObject.transform.SetParent(parent, false);
+            Image image = buttonObject.GetComponent<Image>();
+            image.color = PanelColor;
+            Button button = buttonObject.GetComponent<Button>();
+            ColorBlock colors = button.colors;
+            colors.normalColor = PanelColor;
+            colors.highlightedColor = new Color(0.05f, 0.35f, 0.48f, 1f);
+            colors.pressedColor = AccentColor;
+            colors.selectedColor = colors.highlightedColor;
+            button.colors = colors;
+            buttonObject.GetComponent<LayoutElement>().preferredHeight = height;
+
+            GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            labelObject.transform.SetParent(buttonObject.transform, false);
+            Stretch(labelObject.GetComponent<RectTransform>());
+            Text text = labelObject.GetComponent<Text>();
+            text.font = runtimeFont;
+            text.fontSize = fontSize;
+            text.color = Color.white;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            text.text = label;
+
+            button.onClick.AddListener(() => AudioManager.Instance?.PlayUiClick());
+            button.onClick.AddListener(() => onClick?.Invoke());
+            return text;
+        }
+
+        private void AddVolumeSlider(Transform parent, string label, float defaultValue, Action<float> changed)
+        {
+            CreateText(parent, label, 19, Color.white, 32f, FontStyle.Bold);
+            GameObject sliderObject = new GameObject("Slider " + label, typeof(RectTransform), typeof(Slider), typeof(LayoutElement));
+            sliderObject.transform.SetParent(parent, false);
+            sliderObject.GetComponent<LayoutElement>().preferredHeight = 32f;
+            RectTransform rect = sliderObject.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(600f, 32f);
+            Image background = sliderObject.AddComponent<Image>();
+            background.color = PanelColor;
+            GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillObject.transform.SetParent(sliderObject.transform, false);
+            Image fill = fillObject.GetComponent<Image>();
+            fill.color = AccentColor;
+            RectTransform fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(1f, 1f);
+            fillRect.offsetMin = new Vector2(4f, 4f);
+            fillRect.offsetMax = new Vector2(-4f, -4f);
+            Slider slider = sliderObject.GetComponent<Slider>();
+            slider.fillRect = fillRect;
+            slider.targetGraphic = background;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = defaultValue;
+            slider.onValueChanged.AddListener(value => changed?.Invoke(value));
+        }
+
+        private Text CreateHudText(Transform parent, string value, Vector2 position, Vector2 anchor, int size, TextAnchor alignment)
+        {
+            GameObject textObject = new GameObject("HUD Text", typeof(RectTransform), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            RectTransform rect = textObject.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.pivot = anchor.x > 0.5f ? new Vector2(1f, 1f) : new Vector2(anchor.x, anchor.y > 0.5f ? 1f : 0f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(700f, 34f);
+            Text text = textObject.GetComponent<Text>();
+            text.font = runtimeFont;
+            text.fontSize = size;
+            text.fontStyle = FontStyle.Bold;
+            text.color = Color.white;
+            text.alignment = alignment;
+            text.raycastTarget = false;
+            text.text = value;
+            return text;
+        }
+
+        private Slider CreateHudBar(Transform parent, Vector2 position, Vector2 anchor, Vector2 size, Color fillColor)
+        {
+            GameObject barObject = new GameObject("HUD Bar", typeof(RectTransform), typeof(Image), typeof(Slider));
+            barObject.transform.SetParent(parent, false);
+            RectTransform rect = barObject.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.pivot = anchor.y > 0.5f ? new Vector2(anchor.x, 1f) : new Vector2(0.5f, 0f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            Image background = barObject.GetComponent<Image>();
+            background.color = PanelColor;
+            background.raycastTarget = false;
+            GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillObject.transform.SetParent(barObject.transform, false);
+            RectTransform fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(2f, 2f);
+            fillRect.offsetMax = new Vector2(-2f, -2f);
+            Image fill = fillObject.GetComponent<Image>();
+            fill.color = fillColor;
+            Slider slider = barObject.GetComponent<Slider>();
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.interactable = false;
+            slider.fillRect = fillRect;
+            slider.targetGraphic = background;
+            return slider;
+        }
+
+        private void SetHealthBar(HealthComponent health, Slider bar, Text label, string title)
+        {
+            if (health == null)
+            {
+                bar.value = 0f;
+                label.text = $"{title} HP --";
+                return;
+            }
+            bar.value = health.HealthRatio;
+            label.text = $"{title} HP {health.CurrentHealth:0}/{health.MaxHealth:0}";
+        }
+
+        private void SetAllPanelsInactive()
+        {
+            SetPanel(mainPanel, false);
+            SetPanel(briefingPanel, false);
+            SetPanel(howToPanel, false);
+            SetPanel(settingsPanel, false);
+            SetPanel(hudPanel, false);
+            SetPanel(upgradePanel, false);
+            SetPanel(pausePanel, false);
+            SetPanel(resultPanel, false);
+        }
+
+        private static void SetPanel(GameObject panel, bool active)
+        {
+            if (panel != null)
+                panel.SetActive(active);
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        private static HealthComponent FindHealthRole(HealthRole role)
+        {
+            HealthComponent[] components = FindObjectsByType<HealthComponent>(FindObjectsSortMode.None);
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (components[i] != null && components[i].Role == role && !components[i].IsDead)
+                    return components[i];
+            }
+            return null;
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
+            return $"{total / 60:00}:{total % 60:00}";
+        }
+    }
+}
