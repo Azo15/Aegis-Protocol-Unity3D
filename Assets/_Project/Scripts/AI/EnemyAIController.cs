@@ -338,7 +338,7 @@ namespace AegisProtocol.AI
             for (int i = 0; i < renderers.Length; i++)
             {
                 if (renderers[i] != null && renderers[i].material != null)
-                    renderers[i].material.color = archetype.VisualColor;
+                    renderers[i].sharedMaterial.color = archetype.VisualColor;
             }
         }
 

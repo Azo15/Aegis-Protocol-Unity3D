@@ -68,6 +68,11 @@ namespace AegisProtocol.Systems
         {
             if (!string.IsNullOrWhiteSpace(id))
                 terminalId = id;
+            if (statusRenderers == null || statusRenderers.Length == 0)
+                statusRenderers = GetComponentsInChildren<Renderer>(true);
+            if (statusLights == null || statusLights.Length == 0)
+                statusLights = GetComponentsInChildren<Light>(true);
+            ApplyVisualState(isCompleted ? completedColor : (hackActivated ? activeColor : inactiveColor), hackActivated || isCompleted);
         }
 
         public bool CanInteract(GameObject interactor)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using AegisProtocol.AI;
 using AegisProtocol.Combat;
@@ -29,6 +30,7 @@ namespace AegisProtocol.Audio
         [SerializeField, Range(0f, 1f)] private float bgmVolume = 0.45f;
         [SerializeField, Range(0f, 1f)] private float sfxVolume = 0.8f;
 
+        private readonly List<AudioClip> generatedClips = new List<AudioClip>();
         private AudioSource musicSource;
         private AudioSource sfxSource;
         private GameManager gameManager;
@@ -77,6 +79,12 @@ namespace AegisProtocol.Audio
         {
             if (Instance == this)
                 Instance = null;
+            for (int i = 0; i < generatedClips.Count; i++)
+            {
+                if (generatedClips[i] != null)
+                    Destroy(generatedClips[i]);
+            }
+            generatedClips.Clear();
         }
 
         public void SetMasterVolume(float value)
@@ -232,7 +240,7 @@ namespace AegisProtocol.Audio
                 defeatJingle = CreateSynthClip("Defeat Jingle", 1.1f, 220f, 82f, 0.3f, false);
         }
 
-        private static AudioClip CreateSynthClip(
+        private AudioClip CreateSynthClip(
             string clipName,
             float duration,
             float startFrequency,
@@ -263,6 +271,7 @@ namespace AegisProtocol.Audio
 
             AudioClip clip = AudioClip.Create(clipName, sampleCount, channels, sampleRate, false);
             clip.SetData(samples, 0);
+            generatedClips.Add(clip);
             return clip;
         }
 

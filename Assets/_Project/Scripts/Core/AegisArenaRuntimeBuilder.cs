@@ -396,19 +396,20 @@ namespace AegisProtocol.Core
             GameObject terminal = new GameObject(terminalId);
             terminal.transform.SetParent(runtimeRoot.transform, false);
             terminal.transform.position = position;
-            CreatePrimitive("Terminal Console", PrimitiveType.Cube, terminal.transform,
+            GameObject console = CreatePrimitive("Terminal Console", PrimitiveType.Cube, terminal.transform,
                 new Vector3(0f, 1.25f, 0f), new Vector3(1.5f, 2.5f, 1.2f), material);
-            CreateTorus("Signal Ring", terminal.transform, 5.5f, 0.08f, 48, material).transform.localPosition = new Vector3(0f, 0.12f, 0f);
+            GameObject signalRing = CreateTorus("Signal Ring", terminal.transform, 5.5f, 0.08f, 48, material);
+            signalRing.transform.localPosition = new Vector3(0f, 0.12f, 0f);
             SphereCollider collider = terminal.AddComponent<SphereCollider>();
             collider.radius = 3.5f;
             collider.isTrigger = true;
             SatelliteTerminalObjective objective = terminal.AddComponent<SatelliteTerminalObjective>();
-            objective.ConfigureRuntime(terminalId);
             Light signalLight = terminal.AddComponent<Light>();
             signalLight.type = LightType.Point;
             signalLight.color = new Color(1f, 0.35f, 0.08f);
             signalLight.range = 8f;
             signalLight.intensity = 1.4f;
+            objective.ConfigureRuntime(terminalId);
         }
 
         private Transform[] CreateSpawnPoints(Material material)
