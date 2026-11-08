@@ -36,6 +36,7 @@ namespace AegisProtocol.AI
         private bool initialized;
 
         public event Action<EnemyAIController> OnEnemyDied;
+        public static event Action<EnemyAIController> OnAnyEnemyDied;
         public EnemyArchetypeConfig Archetype => archetype;
         public HealthComponent Health => health;
         public bool IsDead => health == null || health.IsDead;
@@ -287,6 +288,7 @@ namespace AegisProtocol.AI
             }
 
             OnEnemyDied?.Invoke(this);
+            OnAnyEnemyDied?.Invoke(this);
             Destroy(gameObject);
         }
 
