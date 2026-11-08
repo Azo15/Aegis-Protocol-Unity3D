@@ -58,6 +58,9 @@ Assets/_Project/Scripts/
 - **Mermi yaşam döngüsü:** `ProjectileController` Instantiate edilen plazma/mikro-füze nesnelerini hareket ettirir, hedef/alan hasarını dost grupları koruyarak uygular ve çarpma/ömür sonunda Destroy ile temizler. `TimedEffectDestroyer` geçici görsel efektleri toplar.
 - **Düşman AI:** `EnemyArchetypeConfig` beş arketipin istatistiklerini ve görsel ipuçlarını taşır. `EnemyAIController`, reaktör/mech hedef seçimini, NavMeshAgent varsa NavMesh hareketini, yoksa XZ steering fallback’ini, arketip saldırılarını, EMP yavaşlatmasını, skor ve kristal ödüllerini yönetir.
 - **Dalga ve kaynak akışı:** `WaveSpawnerManager` beş kuşatma dalgasını, spawn koridorlarını, hasarsız dalga bonusunu, beşinci dalga reaktör HP bonusunu ve üçüncü dalganın karanlık/taktik fener geçişini yönetir. `CrystalResourceBank` kristal bakiyesini; `EnergyCrystalPickup` manyetik toplama davranışını sağlar.
+- **Taktik inşa:** `BuildNode`/`TacticalBuildManager`, E etkileşimi ve 1/2/3 seçimleriyle kristal maliyetli lazer taret, EMP kulesi ve onarım istasyonu kurar. Yapı prefabı yoksa `DefenseTowerController` ilkel 3B görsel üretir.
+- **Uydu görevleri:** `SatelliteTerminalObjective` üç benzersiz terminal kimliğiyle 30 saniyelik sinyal alanı hack’ini yürütür; alandan çıkmak ilerlemeyi duraklatır, tamamlanınca 500 puan ve görev kaydı verir.
+- **Roguelite yükseltmeleri:** `RogueliteUpgradeManager`, her dalga sonu altı modülden üç farklı kart sunar; seçim ısı, zırh, taret, manyetik çekim, silah hasarı veya itici hızını geliştirip sıradaki dalgayı başlatır.
 - **ScriptableObject yaklaşımı:** Düşman, dalga, yapı ve modül ayarları içerik verisi olarak tanımlanabilir; çalışma anındaki durum paylaşılan asset’lere yazılmaz.
 - **Nesne yaşam döngüsü:** Prototipte dinamik düşman, mermi ve enerji kristali üretimi `Instantiate`, sahneden kaldırılması `Destroy` ile gösterilir. Nesne havuzlama, performans profili ihtiyaç gösterirse eklenir.
 - **Yol bulma:** Düşman hareketi için Unity AI Navigation / NavMesh hedeflenir. Unity 6.0 için paket dokümantasyonu: [AI Navigation 2.0.9](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.ai.navigation.html).
@@ -72,18 +75,18 @@ Assets/_Project/Scripts/
 | Sağ tık | Mikro-füze ateşle |
 | `Space` | Dash / kaçınma |
 | `E` | Yakındaki terminal veya BuildNode ile etkileşim |
-| `1` `2` `3` | İnşa arayüzündeyken yapı seç |
+| `1` `2` `3` | Lazer taret / EMP kulesi / Onarım istasyonu seç |
 | `Esc` / `P` | Pause girdi sinyali; menü bağlantısı sonraki UI aşamasında |
 | `F` | Taktik feneri aç/kapat |
 
-Input reader fare ateşini, silah/build/pause tuşlarını snapshot olarak sağlar. Silah, inşa onayı ve pause menüsü gibi oyun akışları ilgili sistemler eklendikçe bağlanacaktır.
+`PlayerInputReader` test edilebilir input snapshot’ları yayınlar; sol/sağ tık silahlara, 1/2/3 yapı seçimine ve E etkileşim tarayıcısına bağlıdır. Pause menüsü ile yükseltme kartlarının görsel UI sunumu sonraki sunum aşamasında bağlanacaktır.
 
 ## Geliştirme Yol Haritası
 
 1. **Repo ve çekirdek mimari — tamamlandı:** Git düzeni, Unity proje iskeleti, sağlık/etkileşim arayüzleri, oyun durumu ve bootstrap.
 2. **Mech kontrol kodu — çekirdek hazır:** Input soyutlaması, hareket, bağımsız nişan, dash, etkileşim tarayıcısı ve kamera rig’i. Prefab/sahne bağlantısı ve oynanış ayarı sıradaki iş.
 3. **Savaş döngüsü — kod hazır:** Çift modlu silah, aşırı ısınma/kilit, mermi güdümü/alan hasarı, düşman AI, kristal ekonomisi, beş dalga ve Instantiate/Destroy yaşam döngüsü. Sahne/prefab bağlantısı ve oynanış ayarı sıradaki işler.
-4. **Taktik sistemler:** BuildNode yerleşimi, kuleler, terminal görevleri, dalga akışı ve modül seçimi.
+4. **Taktik sistemler — kod hazır:** 12 BuildNode yuvası üzerinden inşa, üç terminal görevi ve dalga arası rastgele modül seçimi. UI/prefab bağlantıları ile oynanış dengelemesi sıradaki işler.
 5. **Sunum ve dağıtım:** HUD/menüler, ses, dengeleme, WebGL performansı ve tarayıcı doğrulaması.
 
 Her aşama önce oynanabilir temel akışı sağlamlaştırır, sonra kapsamı genişletir. Dikey dilim ve performans ölçümleri tamamlandıkça bu yol haritası güncellenir.
@@ -96,7 +99,7 @@ Her aşama önce oynanabilir temel akışı sağlamlaştırır, sonra kapsamı g
 4. `Assets/_Project/Scenes` altında açılacak oyun sahnesi geliştirme aşamasında eklenecektir. `SceneBootstrapper` bileşenini başlangıç sahnesine koy.
 5. WebGL için `File > Build Profiles` üzerinden Web platformunu seç; gerçek tarayıcı performansını hedef cihazda ölç.
 
-> Depoda henüz başlangıç sahnesi, prefab bağlantısı veya tamamlanmış oynanabilir/WebGL build bulunmuyor. `SceneBootstrapper` bileşenini sahneye ekleyip Mech, Rigidbody, HealthComponent, PlayerInputReader, kamera, movement/weapon config ve namlu referanslarını bağla. `WaveSpawnerManager` üzerinde düşman prefabı + archetype eşleşmelerini, en az iki (Kuzey/Doğu) spawn noktası, Directional Light ve taktik Spotlight referanslarını ata. Düşman prefablarında `HealthComponent`, `EnemyAIController`, Collider ve isteğe bağlı `NavMeshAgent`; kristal prefabında `EnergyCrystalPickup` bulunmalı. Dalga bileşimleri varsayılan değerlerle gelir ve Inspector’dan değiştirilebilir.
+> Depoda henüz başlangıç sahnesi, prefab bağlantısı veya tamamlanmış oynanabilir/WebGL build bulunmuyor. `SceneBootstrapper` bileşenini sahneye ekleyip Mech, Rigidbody, HealthComponent, PlayerInputReader, kamera, movement/weapon config ve namlu referanslarını bağla. `WaveSpawnerManager` üzerinde düşman prefabı + archetype eşleşmelerini, en az iki (Kuzey/Doğu) spawn noktası, Directional Light ve taktik Spotlight referanslarını ata. Haritaya 12 ayrı `BuildNode`, üç `SatelliteTerminalObjective` (`Terminal_North`, `Terminal_West`, `Terminal_South`) ve bir `CrystalResourceBank` yerleştir. `TacticalBuildManager` için üç yapı seçeneğini ve maliyet/config verilerini; varsa taret prefablarını; `RogueliteUpgradeManager` için de kart asset’lerini bağla. Bu asset’ler atanmadığında yapı ve kart sistemleri güvenli varsayılanlar kullanır. Düşman prefablarında `HealthComponent`, `EnemyAIController`, Collider ve isteğe bağlı `NavMeshAgent`; kristal prefabında `EnergyCrystalPickup` bulunmalı. Dalga bileşimleri ve yükseltme kartları atanmamışsa çalışma zamanı varsayılanları kullanılır.
 
 ## Depo İçeriği
 
