@@ -12,6 +12,7 @@ namespace AegisProtocol.Core
         public bool PausePressed { get; }
         public bool PrimaryFirePressed { get; }
         public bool PrimaryFireHeld { get; }
+        public bool PrimaryFireReleased { get; }
         public bool SecondaryFirePressed { get; }
         public bool SecondaryFireHeld { get; }
         public bool BuildSlot1Pressed { get; }
@@ -27,6 +28,7 @@ namespace AegisProtocol.Core
             bool pausePressed = false,
             bool primaryFirePressed = false,
             bool primaryFireHeld = false,
+            bool primaryFireReleased = false,
             bool secondaryFirePressed = false,
             bool secondaryFireHeld = false,
             bool buildSlot1Pressed = false,
@@ -41,6 +43,8 @@ namespace AegisProtocol.Core
             PausePressed = pausePressed;
             PrimaryFirePressed = primaryFirePressed;
             PrimaryFireHeld = primaryFireHeld;
+            PrimaryFireReleased = primaryFireReleased;
+            PrimaryFireReleased = primaryFireReleased;
             SecondaryFirePressed = secondaryFirePressed;
             SecondaryFireHeld = secondaryFireHeld;
             BuildSlot1Pressed = buildSlot1Pressed;
@@ -120,6 +124,8 @@ namespace AegisProtocol.Core
                 pausePressed: Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P),
                 primaryFirePressed: Input.GetMouseButtonDown(0),
                 primaryFireHeld: Input.GetMouseButton(0),
+                primaryFireReleased: Input.GetMouseButtonUp(0),
+                primaryFireReleased: Input.GetMouseButtonUp(0),
                 secondaryFirePressed: Input.GetMouseButtonDown(1),
                 secondaryFireHeld: Input.GetMouseButton(1),
                 buildSlot1Pressed: Input.GetKeyDown(KeyCode.Alpha1),
@@ -129,3 +135,4 @@ namespace AegisProtocol.Core
         }
     }
 }
+
