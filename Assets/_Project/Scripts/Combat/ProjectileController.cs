@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using AegisProtocol.Core;
 
@@ -42,10 +43,10 @@ namespace AegisProtocol.Combat
         [SerializeField] private LayerMask damageLayers = ~0;
 
         private Rigidbody body;
-        private Collider projectileCollider;
         private Collider[] overlapBuffer = new Collider[InitialOverlapCapacity];
+        private Collider[] targetSearchBuffer = new Collider[InitialOverlapCapacity];
+        private readonly HashSet<HealthComponent> damagedTargets = new HashSet<HealthComponent>();
         private float lifetimeRemaining;
-        private bool initialized;
         private bool hasImpacted;
 
         public bool IsMissile => isMissile;
@@ -112,23 +113,15 @@ namespace AegisProtocol.Combat
             impactEffectPrefab = settings.ImpactEffectPrefab;
             lifetimeRemaining = maxLifetime;
             hasImpacted = false;
-            initialized = true;
             EnsurePhysicsComponents();
         }
 
         private void EnsurePhysicsComponents()
         {
-            projectileCollider = GetComponent<Collider>();
+            Collider projectileCollider = GetComponent<Collider>();
             if (projectileCollider == null)
-            {
-                SphereCollider sphereCollider = gameObject.AddComponent<SphereCollider>();
-                sphereCollider.isTrigger = true;
-                projectileCollider = sphereCollider;
-            }
-            else
-            {
-                projectileCollider.isTrigger = true;
-            }
+                projectileCollider = gameObject.AddComponent<SphereCollider>();
+            projectileCollider.isTrigger = true;
 
             body = GetComponent<Rigidbody>();
             if (body == null)
@@ -161,16 +154,16 @@ namespace AegisProtocol.Combat
             if (targetSearchRadius <= 0f)
                 return null;
 
-            Collider[] candidates = Physics.OverlapSphere(
-                transform.position,
-                targetSearchRadius,
-                damageLayers,
-                QueryTriggerInteraction.Collide);
+            int candidateCount = GetTargetSearchCount();
             Transform nearest = null;
             float nearestDistance = float.PositiveInfinity;
-            for (int i = 0; i < candidates.Length; i++)
+            for (int i = 0; i < candidateCount; i++)
             {
-                HealthComponent candidate = candidates[i].GetComponentInParent<HealthComponent>();
+                Collider collider = targetSearchBuffer[i];
+                if (collider == null)
+                    continue;
+
+                HealthComponent candidate = collider.GetComponentInParent<HealthComponent>();
                 if (candidate == null || !CanDamage(candidate))
                     continue;
 
@@ -211,6 +204,7 @@ namespace AegisProtocol.Combat
         private void ApplyAreaDamage(Vector3 center)
         {
             int count = GetOverlapCount(center);
+            damagedTargets.Clear();
             for (int i = 0; i < count; i++)
             {
                 Collider candidate = overlapBuffer[i];
@@ -218,8 +212,25 @@ namespace AegisProtocol.Combat
                     continue;
 
                 HealthComponent health = candidate.GetComponentInParent<HealthComponent>();
-                if (health != null && CanDamage(health))
+                if (health != null && CanDamage(health) && damagedTargets.Add(health))
                     health.TakeDamage(damage, instigator);
+            }
+        }
+
+        private int GetTargetSearchCount()
+        {
+            while (true)
+            {
+                int count = Physics.OverlapSphereNonAlloc(
+                    transform.position,
+                    targetSearchRadius,
+                    targetSearchBuffer,
+                    damageLayers,
+                    QueryTriggerInteraction.Collide);
+                if (count < targetSearchBuffer.Length || targetSearchBuffer.Length >= MaximumOverlapCapacity)
+                    return count;
+
+                targetSearchBuffer = new Collider[Mathf.Min(targetSearchBuffer.Length * 2, MaximumOverlapCapacity)];
             }
         }
 
@@ -252,8 +263,10 @@ namespace AegisProtocol.Combat
                 return candidate.Role == HealthRole.Enemy || candidate.Role == HealthRole.Boss;
             if (instigatorRole == HealthRole.Enemy || instigatorRole == HealthRole.Boss)
                 return candidate.Role == HealthRole.PlayerMech || candidate.Role == HealthRole.Reactor;
+            if (instigatorRole == HealthRole.Reactor)
+                return candidate.Role == HealthRole.Enemy || candidate.Role == HealthRole.Boss;
 
-            return candidate.Role != instigatorRole;
+            return false;
         }
 
         private bool IsValidTarget(Transform candidate)

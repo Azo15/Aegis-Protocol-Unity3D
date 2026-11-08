@@ -16,12 +16,12 @@ namespace AegisProtocol.Combat
         [Header("Configuration")]
         [SerializeField] private WeaponConfig weaponConfig;
         [Header("Launch points and prefabs")]
-        [SerializeField] private Transform muzzleTransform;
-        [SerializeField] private ProjectileController plasmaProjectilePrefab;
-        [SerializeField] private ProjectileController missileProjectilePrefab;
-        [SerializeField] private GameObject muzzleFlashPrefab;
-        [SerializeField] private GameObject impactEffectPrefab;
-        [SerializeField] private IsometricCameraRig cameraRig;
+        [SerializeField] private Transform muzzleTransform = null;
+        [SerializeField] private ProjectileController plasmaProjectilePrefab = null;
+        [SerializeField] private ProjectileController missileProjectilePrefab = null;
+        [SerializeField] private GameObject muzzleFlashPrefab = null;
+        [SerializeField] private GameObject impactEffectPrefab = null;
+        [SerializeField] private IsometricCameraRig cameraRig = null;
 
         private MechController mechController;
         private PlayerInputReader inputReader;
@@ -29,7 +29,7 @@ namespace AegisProtocol.Combat
         private float currentHeat;
         private float overheatRemaining;
         private float missileCooldownRemaining;
-        private float primaryShotTimer;
+        private float lastShotTime = float.NegativeInfinity;
         private float heatGenerationMultiplier = 1f;
         private float fireRateMultiplier = 1f;
         private float damageMultiplier = 1f;
@@ -104,15 +104,11 @@ namespace AegisProtocol.Combat
 
         private bool TryFirePrimary()
         {
-            if (isOverheated || primaryShotTimer > 0f || plasmaProjectilePrefab == null)
+            float shotInterval = 1f / (weaponConfig.PrimaryFireRate * fireRateMultiplier);
+            if (isOverheated || Time.time - lastShotTime < shotInterval || plasmaProjectilePrefab == null)
                 return false;
 
             float heatAfterShot = currentHeat + weaponConfig.PrimaryHeatPerShot * heatGenerationMultiplier;
-            if (heatAfterShot >= weaponConfig.MaximumHeat)
-            {
-                BeginOverheat();
-                return false;
-            }
 
             Vector3 direction = GetAimDirection();
             ProjectileController projectile = Instantiate(
@@ -131,12 +127,12 @@ namespace AegisProtocol.Combat
                 ImpactEffectPrefab = impactEffectPrefab
             });
 
-            currentHeat = heatAfterShot;
-            primaryShotTimer = 1f / (weaponConfig.PrimaryFireRate * fireRateMultiplier);
+            currentHeat = Mathf.Min(weaponConfig.MaximumHeat, heatAfterShot);
+            lastShotTime = Time.time;
             PublishHeatChanged();
             SpawnMuzzleFlash(direction);
             OnWeaponFired?.Invoke(new WeaponFireEvent(false, GetMuzzlePosition(), direction));
-            if (currentHeat >= weaponConfig.MaximumHeat)
+            if (heatAfterShot >= weaponConfig.MaximumHeat)
                 BeginOverheat();
             return true;
         }
@@ -147,11 +143,6 @@ namespace AegisProtocol.Combat
                 return false;
 
             float heatAfterShot = currentHeat + weaponConfig.MissileHeatPerShot * heatGenerationMultiplier;
-            if (heatAfterShot >= weaponConfig.MaximumHeat)
-            {
-                BeginOverheat();
-                return false;
-            }
 
             Vector3 direction = mechController.AimWorldPoint - GetMuzzlePosition();
             if (direction.sqrMagnitude <= 0.0001f)
@@ -177,7 +168,7 @@ namespace AegisProtocol.Combat
                 ImpactEffectPrefab = impactEffectPrefab
             });
 
-            currentHeat = heatAfterShot;
+            currentHeat = Mathf.Min(weaponConfig.MaximumHeat, heatAfterShot);
             missileCooldownRemaining = weaponConfig.MissileCooldown;
             PublishMissileCooldown();
             PublishHeatChanged();
@@ -185,14 +176,13 @@ namespace AegisProtocol.Combat
             OnWeaponFired?.Invoke(new WeaponFireEvent(true, GetMuzzlePosition(), direction));
             if (cameraRig != null)
                 cameraRig.TriggerCameraShake(MissileShakeIntensity, MissileShakeDuration);
-            if (currentHeat >= weaponConfig.MaximumHeat)
+            if (heatAfterShot >= weaponConfig.MaximumHeat)
                 BeginOverheat();
             return true;
         }
 
         private void UpdateCooldowns(float deltaTime)
         {
-            primaryShotTimer = Mathf.Max(0f, primaryShotTimer - deltaTime);
             if (missileCooldownRemaining > 0f)
             {
                 float previous = MissileCooldownNormalized;
@@ -219,10 +209,9 @@ namespace AegisProtocol.Combat
             if (isOverheated)
                 return;
 
-            currentHeat = weaponConfig.MaximumHeat;
+            currentHeat = Mathf.Min(currentHeat, weaponConfig.MaximumHeat);
             isOverheated = true;
             overheatRemaining = weaponConfig.OverheatLockoutDuration;
-            primaryShotTimer = 0f;
             PublishHeatChanged();
             OnOverheatStarted?.Invoke();
             if (overheatRemaining <= 0f)
