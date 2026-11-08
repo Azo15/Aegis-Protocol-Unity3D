@@ -22,8 +22,8 @@ namespace AegisProtocol.Core
         [SerializeField, Min(1f)] private float orthographicSize = 12f;
 
         [Header("Tactical Light")]
-        [SerializeField] private Light tacticalSpotlight;
-        [SerializeField] private bool tacticalLightStartsEnabled;
+        [SerializeField] private Light tacticalSpotlight = null;
+        [SerializeField] private bool tacticalLightStartsEnabled = false;
 
         private Camera controlledCamera;
         private Vector3 smoothVelocity;

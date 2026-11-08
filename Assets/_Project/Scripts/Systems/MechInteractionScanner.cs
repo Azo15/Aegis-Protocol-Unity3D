@@ -14,7 +14,7 @@ namespace AegisProtocol.Systems
 
         [SerializeField, Min(0.1f)] private float interactionRadius = 3.5f;
         [SerializeField] private LayerMask interactionLayers = ~0;
-        [SerializeField] private bool drawDebugRadius;
+        [SerializeField] private bool drawDebugRadius = false;
 
         private readonly List<MonoBehaviour> componentBuffer = new List<MonoBehaviour>(16);
         private readonly List<InteractableCandidate> candidates = new List<InteractableCandidate>(16);

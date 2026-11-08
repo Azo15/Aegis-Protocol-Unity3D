@@ -14,7 +14,7 @@ namespace AegisProtocol.Combat
         [Header("References")]
         [SerializeField] private MechMovementConfig movementConfig;
         [SerializeField] private Transform chassisTransform;
-        [SerializeField] private Transform turretTransform;
+        [SerializeField] private Transform turretTransform = null;
         [SerializeField] private Camera aimCamera;
         [SerializeField] private LayerMask aimSurfaceMask = ~0;
         [SerializeField] private bool allowBriefingInput = true;
@@ -211,6 +211,7 @@ namespace AegisProtocol.Combat
 
         private bool TryGetAimPoint(Ray ray, out Vector3 point)
         {
+            point = AimWorldPoint;
             int hitCount = Physics.RaycastNonAlloc(
                 ray,
                 aimHits,
