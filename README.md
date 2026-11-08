@@ -56,6 +56,8 @@ Assets/_Project/Scripts/
 - **Kamera:** `IsometricCameraRig` 50° eğimli takip, aim lead, sarsıntı ve taktik fener geçişini sağlar. `MechInteractionScanner`, 3.5 birim çevrede uygun en yakın hedefi bulur.
 - **Silah ve ısı:** `WeaponSystem`, sürekli ateşlenen plazma topunu ve bekleme süreli güdümlü mikro-füzeyi yönetir; HUD/Ses event’leri ısı, aşırı ısınma ve cooldown durumlarını bildirir. Parametreler `WeaponConfig` ScriptableObject’inde; atanmadığında güvenli varsayılanlar üretilir.
 - **Mermi yaşam döngüsü:** `ProjectileController` Instantiate edilen plazma/mikro-füze nesnelerini hareket ettirir, hedef/alan hasarını dost grupları koruyarak uygular ve çarpma/ömür sonunda Destroy ile temizler. `TimedEffectDestroyer` geçici görsel efektleri toplar.
+- **Düşman AI:** `EnemyArchetypeConfig` beş arketipin istatistiklerini ve görsel ipuçlarını taşır. `EnemyAIController`, reaktör/mech hedef seçimini, NavMeshAgent varsa NavMesh hareketini, yoksa XZ steering fallback’ini, arketip saldırılarını, EMP yavaşlatmasını, skor ve kristal ödüllerini yönetir.
+- **Dalga ve kaynak akışı:** `WaveSpawnerManager` beş kuşatma dalgasını, spawn koridorlarını, hasarsız dalga bonusunu, beşinci dalga reaktör HP bonusunu ve üçüncü dalganın karanlık/taktik fener geçişini yönetir. `CrystalResourceBank` kristal bakiyesini; `EnergyCrystalPickup` manyetik toplama davranışını sağlar.
 - **ScriptableObject yaklaşımı:** Düşman, dalga, yapı ve modül ayarları içerik verisi olarak tanımlanabilir; çalışma anındaki durum paylaşılan asset’lere yazılmaz.
 - **Nesne yaşam döngüsü:** Prototipte dinamik düşman, mermi ve enerji kristali üretimi `Instantiate`, sahneden kaldırılması `Destroy` ile gösterilir. Nesne havuzlama, performans profili ihtiyaç gösterirse eklenir.
 - **Yol bulma:** Düşman hareketi için Unity AI Navigation / NavMesh hedeflenir. Unity 6.0 için paket dokümantasyonu: [AI Navigation 2.0.9](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.ai.navigation.html).
@@ -80,7 +82,7 @@ Input reader fare ateşini, silah/build/pause tuşlarını snapshot olarak sağl
 
 1. **Repo ve çekirdek mimari — tamamlandı:** Git düzeni, Unity proje iskeleti, sağlık/etkileşim arayüzleri, oyun durumu ve bootstrap.
 2. **Mech kontrol kodu — çekirdek hazır:** Input soyutlaması, hareket, bağımsız nişan, dash, etkileşim tarayıcısı ve kamera rig’i. Prefab/sahne bağlantısı ve oynanış ayarı sıradaki iş.
-3. **Savaş döngüsü — çekirdek hazır:** Çift modlu silah, aşırı ısınma/kilit, mermi güdümü/alan hasarı ve Instantiate/Destroy yaşam döngüsü. Düşman üretimi, NavMesh takibi, kristal düşüşü ve reaktör savunması sıradaki işler.
+3. **Savaş döngüsü — kod hazır:** Çift modlu silah, aşırı ısınma/kilit, mermi güdümü/alan hasarı, düşman AI, kristal ekonomisi, beş dalga ve Instantiate/Destroy yaşam döngüsü. Sahne/prefab bağlantısı ve oynanış ayarı sıradaki işler.
 4. **Taktik sistemler:** BuildNode yerleşimi, kuleler, terminal görevleri, dalga akışı ve modül seçimi.
 5. **Sunum ve dağıtım:** HUD/menüler, ses, dengeleme, WebGL performansı ve tarayıcı doğrulaması.
 
@@ -94,7 +96,7 @@ Her aşama önce oynanabilir temel akışı sağlamlaştırır, sonra kapsamı g
 4. `Assets/_Project/Scenes` altında açılacak oyun sahnesi geliştirme aşamasında eklenecektir. `SceneBootstrapper` bileşenini başlangıç sahnesine koy.
 5. WebGL için `File > Build Profiles` üzerinden Web platformunu seç; gerçek tarayıcı performansını hedef cihazda ölç.
 
-> Depoda henüz başlangıç sahnesi, prefab bağlantısı veya tamamlanmış oynanabilir/WebGL build bulunmuyor. `SceneBootstrapper` bileşenini sahneye ekleyip Mech, Rigidbody, HealthComponent, PlayerInputReader, kamera ve movement config referanslarını bağlamak gerekir.
+> Depoda henüz başlangıç sahnesi, prefab bağlantısı veya tamamlanmış oynanabilir/WebGL build bulunmuyor. `SceneBootstrapper` bileşenini sahneye ekleyip Mech, Rigidbody, HealthComponent, PlayerInputReader, kamera, movement/weapon config ve namlu referanslarını bağla. `WaveSpawnerManager` üzerinde düşman prefabı + archetype eşleşmelerini, en az iki (Kuzey/Doğu) spawn noktası, Directional Light ve taktik Spotlight referanslarını ata. Düşman prefablarında `HealthComponent`, `EnemyAIController`, Collider ve isteğe bağlı `NavMeshAgent`; kristal prefabında `EnergyCrystalPickup` bulunmalı. Dalga bileşimleri varsayılan değerlerle gelir ve Inspector’dan değiştirilebilir.
 
 ## Depo İçeriği
 
