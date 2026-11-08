@@ -191,11 +191,7 @@ namespace AegisProtocol.Core
                 return false;
 
             finalBossDefeated = true;
-            if (completedWaves < currentWave)
-                CompleteCurrentWave();
-            else
-                TryCompleteVictory();
-
+            TryCompleteVictory();
             PublishSnapshot();
             return true;
         }

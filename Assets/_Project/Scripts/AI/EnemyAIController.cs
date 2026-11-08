@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using AegisProtocol.Combat;
@@ -20,6 +21,7 @@ namespace AegisProtocol.AI
         [SerializeField] private LayerMask attackLayers = ~0;
 
         private readonly Collider[] explosionBuffer = new Collider[64];
+        private readonly HashSet<HealthComponent> affectedByExplosion = new HashSet<HealthComponent>();
         private HealthComponent health;
         private HealthComponent reactor;
         private HealthComponent mech;
@@ -245,12 +247,13 @@ namespace AegisProtocol.AI
                 explosionBuffer,
                 attackLayers,
                 QueryTriggerInteraction.Collide);
+            affectedByExplosion.Clear();
             for (int i = 0; i < count; i++)
             {
                 HealthComponent candidate = explosionBuffer[i] != null
                     ? explosionBuffer[i].GetComponentInParent<HealthComponent>()
                     : null;
-                if (CanDamageTarget(candidate))
+                if (CanDamageTarget(candidate) && affectedByExplosion.Add(candidate))
                     candidate.TakeDamage(archetype.AttackDamage, gameObject);
             }
 
