@@ -31,6 +31,7 @@ namespace AegisProtocol.Core
         private float shakeRemaining;
         private float shakeDuration;
         private float shakeIntensity;
+        private Vector3 currentShakeOffset;
         private bool hasInitialPosition;
 
         public event Action<bool> OnTacticalLightChanged;
@@ -159,18 +160,26 @@ namespace AegisProtocol.Core
         private Vector3 GetShakeOffset(float deltaTime)
         {
             if (shakeRemaining <= 0f)
-                return Vector3.zero;
+            {
+                currentShakeOffset = Vector3.zero;
+                return currentShakeOffset;
+            }
+
+            // A paused game must freeze the current shake rather than generate frame-by-frame jitter.
+            if (deltaTime <= 0f)
+                return currentShakeOffset;
 
             float fade = shakeDuration <= 0f ? 0f : shakeRemaining / shakeDuration;
-            Vector3 offset = UnityEngine.Random.insideUnitSphere * (shakeIntensity * fade);
+            currentShakeOffset = UnityEngine.Random.insideUnitSphere * (shakeIntensity * fade);
             shakeRemaining = Mathf.Max(0f, shakeRemaining - deltaTime);
             if (shakeRemaining <= 0f)
             {
                 shakeDuration = 0f;
                 shakeIntensity = 0f;
+                currentShakeOffset = Vector3.zero;
             }
 
-            return offset;
+            return currentShakeOffset;
         }
     }
 }

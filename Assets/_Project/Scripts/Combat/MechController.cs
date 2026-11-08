@@ -25,6 +25,7 @@ namespace AegisProtocol.Combat
         private PlayerInputReader inputReader;
         private MechMovementConfig runtimeFallbackConfig;
         private Vector3 currentVelocity;
+        private Vector3 velocityBeforeDash;
         private Vector3 dashDirection;
         private float dashTimeRemaining;
         private float dashCooldownRemaining;
@@ -100,18 +101,31 @@ namespace AegisProtocol.Combat
             if (!CanControlMech())
             {
                 currentVelocity = Vector3.zero;
-                body.linearVelocity = Vector3.zero;
+                Vector3 stoppedVelocity = body.linearVelocity;
+                stoppedVelocity.x = 0f;
+                stoppedVelocity.z = 0f;
+                body.linearVelocity = stoppedVelocity;
                 return;
             }
 
             float fixedDeltaTime = Time.fixedDeltaTime;
             if (isDashing)
             {
-                Vector3 dashPosition = ClampToArena(body.position + dashDirection * movementConfig.DashSpeed * fixedDeltaTime);
-                body.MovePosition(dashPosition);
+                Vector3 dashVelocity = ConstrainVelocityToArena(
+                    dashDirection * movementConfig.DashSpeed,
+                    fixedDeltaTime);
+                Vector3 bodyVelocity = body.linearVelocity;
+                bodyVelocity.x = dashVelocity.x;
+                bodyVelocity.z = dashVelocity.z;
+                body.linearVelocity = bodyVelocity;
+                currentVelocity = dashVelocity;
+
                 dashTimeRemaining -= fixedDeltaTime;
                 if (dashTimeRemaining <= 0f)
+                {
                     isDashing = false;
+                    currentVelocity = velocityBeforeDash;
+                }
                 return;
             }
 
@@ -127,11 +141,14 @@ namespace AegisProtocol.Combat
                 : movementConfig.Deceleration;
             currentVelocity = Vector3.MoveTowards(currentVelocity, targetVelocity, rate * fixedDeltaTime);
 
+            currentVelocity = ConstrainVelocityToArena(currentVelocity, fixedDeltaTime);
             if (moveDirection.sqrMagnitude > 0.0001f)
                 RotateChassis(moveDirection, fixedDeltaTime);
 
-            Vector3 nextPosition = ClampToArena(body.position + currentVelocity * fixedDeltaTime);
-            body.MovePosition(nextPosition);
+            Vector3 horizontalVelocity = body.linearVelocity;
+            horizontalVelocity.x = currentVelocity.x;
+            horizontalVelocity.z = currentVelocity.z;
+            body.linearVelocity = horizontalVelocity;
         }
 
         private void OnDestroy()
@@ -266,6 +283,7 @@ namespace AegisProtocol.Combat
             if (direction.sqrMagnitude <= 0.0001f)
                 return;
 
+            velocityBeforeDash = currentVelocity;
             dashDirection = direction.normalized;
             dashTimeRemaining = movementConfig.DashDuration;
             dashCooldownRemaining = movementConfig.DashCooldown;
@@ -290,12 +308,19 @@ namespace AegisProtocol.Combat
             OnDashCooldownUpdated?.Invoke(DashCooldownNormalized);
         }
 
-        private Vector3 ClampToArena(Vector3 position)
+        private Vector3 ConstrainVelocityToArena(Vector3 velocity, float deltaTime)
         {
             Bounds bounds = movementConfig.ArenaBounds;
-            position.x = Mathf.Clamp(position.x, bounds.min.x, bounds.max.x);
-            position.z = Mathf.Clamp(position.z, bounds.min.z, bounds.max.z);
-            return position;
+            Vector3 position = body.position;
+            float nextX = position.x + velocity.x * deltaTime;
+            float nextZ = position.z + velocity.z * deltaTime;
+
+            if (nextX < bounds.min.x || nextX > bounds.max.x)
+                velocity.x = 0f;
+            if (nextZ < bounds.min.z || nextZ > bounds.max.z)
+                velocity.z = 0f;
+
+            return velocity;
         }
     }
 }
