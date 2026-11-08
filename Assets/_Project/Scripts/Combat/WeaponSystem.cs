@@ -81,6 +81,23 @@ namespace AegisProtocol.Combat
                 Destroy(runtimeFallbackConfig);
         }
 
+        /// <summary>Connects launch points and projectile templates created by the arena builder.</summary>
+        public void ConfigureRuntimeReferences(
+            Transform muzzle,
+            ProjectileController plasmaPrefab,
+            ProjectileController missilePrefab,
+            IsometricCameraRig runtimeCamera)
+        {
+            if (muzzle != null)
+                muzzleTransform = muzzle;
+            if (plasmaPrefab != null)
+                plasmaProjectilePrefab = plasmaPrefab;
+            if (missilePrefab != null)
+                missileProjectilePrefab = missilePrefab;
+            if (runtimeCamera != null)
+                cameraRig = runtimeCamera;
+        }
+
         /// <summary>Applies a cumulative positive heat-generation upgrade.</summary>
         public void ApplyHeatGenerationMultiplier(float multiplier)
         {
@@ -115,6 +132,7 @@ namespace AegisProtocol.Combat
                 plasmaProjectilePrefab,
                 GetMuzzlePosition(),
                 Quaternion.LookRotation(direction, Vector3.up));
+            projectile.gameObject.SetActive(true);
             projectile.Initialize(new ProjectileLaunchSettings
             {
                 IsMissile = false,
@@ -153,6 +171,7 @@ namespace AegisProtocol.Combat
                 missileProjectilePrefab,
                 GetMuzzlePosition(),
                 Quaternion.LookRotation(direction, Vector3.up));
+            projectile.gameObject.SetActive(true);
             projectile.Initialize(new ProjectileLaunchSettings
             {
                 IsMissile = true,

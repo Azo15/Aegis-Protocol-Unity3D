@@ -70,6 +70,11 @@ namespace AegisProtocol.AI
             visualColor = color;
         }
 
+        public void SetRuntimeProjectilePrefab(GameObject prefab)
+        {
+            attackProjectilePrefab = prefab;
+        }
+
         private void OnValidate()
         {
             maxHealth = Mathf.Max(1f, maxHealth);

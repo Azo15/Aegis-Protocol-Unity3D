@@ -94,6 +94,14 @@ namespace AegisProtocol.Core
             Time.timeScale = 1f;
         }
 
+        public void ConfigureObjectives(HealthComponent playerMech, HealthComponent centralReactor)
+        {
+            if (playerMech != null)
+                mechHealth = playerMech;
+            if (centralReactor != null)
+                reactorHealth = centralReactor;
+        }
+
         /// <summary>Finds objective health components for a newly opened gameplay scene.</summary>
         public void InitializeForScene()
         {

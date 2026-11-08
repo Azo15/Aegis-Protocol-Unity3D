@@ -113,6 +113,19 @@ namespace AegisProtocol.AI
 
         }
 
+        /// <summary>Connects the generated crystal effect and archetype data.</summary>
+        public void ConfigureRuntime(EnemyArchetypeConfig config, EnergyCrystalPickup crystalPrefab)
+        {
+            if (crystalPrefab != null)
+                energyCrystalPrefab = crystalPrefab;
+            if (config != null)
+            {
+                archetype = config;
+                if (health != null)
+                    Initialize(config);
+            }
+        }
+
         /// <summary>Assigns the wave-selected configuration after instantiation.</summary>
         public void Initialize(EnemyArchetypeConfig config)
         {
@@ -211,6 +224,7 @@ namespace AegisProtocol.AI
 
             Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
             GameObject projectileObject = Instantiate(projectilePrefab, origin, rotation);
+            projectileObject.SetActive(true);
             ProjectileController projectile = projectileObject.GetComponent<ProjectileController>();
             if (projectile == null)
                 projectile = projectileObject.AddComponent<ProjectileController>();
@@ -284,6 +298,7 @@ namespace AegisProtocol.AI
                     energyCrystalPrefab,
                     transform.position,
                     Quaternion.identity);
+                pickup.gameObject.SetActive(true);
                 pickup.Initialize(archetype.CrystalDropAmount);
             }
 

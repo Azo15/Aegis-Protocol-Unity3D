@@ -13,6 +13,7 @@ namespace AegisProtocol.Systems
         public EnemyType type;
         public EnemyAIController prefab = null;
         public EnemyArchetypeConfig config = null;
+        public EnergyCrystalPickup crystalPrefab = null;
     }
 
     [Serializable]
@@ -62,6 +63,21 @@ namespace AegisProtocol.Systems
 
         public int ActiveEnemyCount => activeEnemies.Count;
         public int ManagedWave => managedWave;
+
+        /// <summary>Supplies runtime-generated spawn data from AegisArenaRuntimeBuilder.</summary>
+        public void ConfigureRuntime(
+            EnemyPrefabDefinition[] definitions,
+            Transform[] runtimeSpawnPoints,
+            Light mainDirectionalLight,
+            IsometricCameraRig runtimeCameraRig)
+        {
+            enemyDefinitions = definitions ?? Array.Empty<EnemyPrefabDefinition>();
+            spawnPoints = runtimeSpawnPoints ?? Array.Empty<Transform>();
+            if (mainDirectionalLight != null)
+                directionalLight = mainDirectionalLight;
+            if (runtimeCameraRig != null)
+                cameraRig = runtimeCameraRig;
+        }
 
         private void Start()
         {
@@ -187,8 +203,8 @@ namespace AegisProtocol.Systems
             }
 
             EnemyAIController enemy = Instantiate(definition.prefab, spawnPoint.position, spawnPoint.rotation);
-            if (definition.config != null)
-                enemy.Initialize(definition.config);
+            enemy.gameObject.SetActive(true);
+            enemy.ConfigureRuntime(definition.config, definition.crystalPrefab);
             enemy.OnEnemyDied += HandleEnemyDied;
             activeEnemies.Add(enemy);
             activeSpawnCount++;

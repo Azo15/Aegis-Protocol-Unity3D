@@ -65,8 +65,6 @@ namespace AegisProtocol.Combat
 
             if (chassisTransform == null)
                 chassisTransform = transform;
-            if (turretTransform == null)
-                Debug.LogWarning("Assign a turret transform to enable independent mouse aiming.", this);
             if (aimCamera == null)
                 aimCamera = Camera.main;
 
@@ -155,6 +153,22 @@ namespace AegisProtocol.Combat
         {
             if (runtimeFallbackConfig != null)
                 Destroy(runtimeFallbackConfig);
+        }
+
+        /// <summary>Connects camera and model references created by the procedural arena builder.</summary>
+        public void ConfigureRuntimeReferences(Transform chassis, Transform turret, Camera runtimeCamera)
+        {
+            if (chassis != null)
+                chassisTransform = chassis;
+            if (turret != null)
+                turretTransform = turret;
+            if (runtimeCamera != null)
+                aimCamera = runtimeCamera;
+            if (chassisTransform != null)
+            {
+                AimDirection = chassisTransform.forward;
+                AimWorldPoint = transform.position + AimDirection * 5f;
+            }
         }
 
         /// <summary>Multiplies the current movement scale, allowing upgrades to stack.</summary>

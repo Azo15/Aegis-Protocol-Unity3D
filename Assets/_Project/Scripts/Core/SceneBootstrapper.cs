@@ -31,6 +31,12 @@ namespace AegisProtocol.Core
                 }
             }
 
+            AegisArenaRuntimeBuilder arenaBuilder = GetComponent<AegisArenaRuntimeBuilder>();
+            if (arenaBuilder == null)
+                arenaBuilder = gameObject.AddComponent<AegisArenaRuntimeBuilder>();
+
+            arenaBuilder.Build(manager);
+            manager.ConfigureObjectives(arenaBuilder.MechHealth, arenaBuilder.ReactorHealth);
             manager.InitializeForScene();
         }
     }

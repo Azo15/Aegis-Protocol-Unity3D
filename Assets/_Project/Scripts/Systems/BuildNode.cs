@@ -34,6 +34,12 @@ namespace AegisProtocol.Systems
             buildManager = FindFirstObjectByType<TacticalBuildManager>();
         }
 
+        public void ConfigureRuntime(string runtimeId)
+        {
+            if (!string.IsNullOrWhiteSpace(runtimeId))
+                nodeId = runtimeId;
+        }
+
         public bool CanInteract(GameObject interactor)
         {
             return !IsOccupied && GetBuildManager() != null;

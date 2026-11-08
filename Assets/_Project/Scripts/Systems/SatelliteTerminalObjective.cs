@@ -64,6 +64,12 @@ namespace AegisProtocol.Systems
                 CompleteHack();
         }
 
+        public void ConfigureRuntime(string id)
+        {
+            if (!string.IsNullOrWhiteSpace(id))
+                terminalId = id;
+        }
+
         public bool CanInteract(GameObject interactor)
         {
             return !isCompleted;

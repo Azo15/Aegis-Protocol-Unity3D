@@ -119,6 +119,22 @@ namespace AegisProtocol.Core
             orthographicSize = Mathf.Max(1f, orthographicSize);
         }
 
+        /// <summary>Connects targets built at runtime without Inspector assignments.</summary>
+        public void ConfigureRuntime(Transform followTarget, MechController controller, PlayerInputReader reader, Light spotlight)
+        {
+            if (followTarget != null)
+                target = followTarget;
+            if (controller != null)
+                mechController = controller;
+            if (reader != null)
+                inputReader = reader;
+            if (spotlight != null)
+            {
+                tacticalSpotlight = spotlight;
+                tacticalSpotlight.enabled = tacticalLightStartsEnabled;
+            }
+        }
+
         /// <summary>Requests a decaying positional shake, suitable for hits and explosions.</summary>
         public void TriggerCameraShake(float intensity = 0.18f, float duration = 0.14f)
         {
