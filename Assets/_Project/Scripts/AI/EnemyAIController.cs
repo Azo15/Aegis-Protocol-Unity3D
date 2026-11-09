@@ -243,7 +243,10 @@ namespace AegisProtocol.AI
                 Target = target.transform,
                 Instigator = gameObject,
                 InstigatorRole = archetype.IsBoss ? HealthRole.Boss : HealthRole.Enemy,
-                ImpactEffectPrefab = impactEffectPrefab
+                ImpactEffectPrefab = impactEffectPrefab,
+                LevelTier = archetype.IsBoss ? 4 : 2,
+                ProjectileColor = bossMissile ? new Color(1f, 0.18f, 0.45f) : new Color(1f, 0.42f, 0.1f),
+                ExplosionColor = new Color(1f, 0.3f, 0.1f)
             });
 
             if (bossMissile)
@@ -337,8 +340,14 @@ namespace AegisProtocol.AI
             Renderer[] renderers = GetComponentsInChildren<Renderer>();
             for (int i = 0; i < renderers.Length; i++)
             {
-                if (renderers[i] != null && renderers[i].material != null)
-                    renderers[i].sharedMaterial.color = archetype.VisualColor;
+                if (renderers[i] == null)
+                    continue;
+                string objName = renderers[i].gameObject.name;
+                if (objName == "Archetype Visual" || objName == "PrimaryHull")
+                {
+                    if (renderers[i].sharedMaterial != null)
+                        renderers[i].sharedMaterial.color = archetype.VisualColor;
+                }
             }
         }
 

@@ -176,30 +176,98 @@ namespace AegisProtocol.Core
         {
             GameObject reactorObject = new GameObject("Central Quantum Reactor");
             reactorObject.transform.SetParent(runtimeRoot.transform, false);
-            reactorObject.transform.position = new Vector3(0f, 0.6f, 0f);
+            reactorObject.transform.position = new Vector3(0f, 0f, 0f);
             health = reactorObject.AddComponent<HealthComponent>();
             health.Configure(HealthRole.Reactor, HealthComponent.ReactorDefaultMaxHealth, true);
 
-            CreatePrimitive("Reactor Housing", PrimitiveType.Cylinder, reactorObject.transform,
-                new Vector3(0f, 0.6f, 0f), new Vector3(5f, 1.2f, 5f), reactorMaterial);
-            CreatePrimitive("Quantum Core", PrimitiveType.Sphere, reactorObject.transform,
-                new Vector3(0f, 2.6f, 0f), new Vector3(2.2f, 2.2f, 2.2f), reactorMaterial);
-            reactorRingA = CreateTorus("Reactor Energy Ring A", reactorObject.transform, 4.8f, 0.16f, 48, reactorMaterial).transform;
-            reactorRingA.localPosition = new Vector3(0f, 1.9f, 0f);
+            CapsuleCollider castleCollider = reactorObject.AddComponent<CapsuleCollider>();
+            castleCollider.radius = 2.8f;
+            castleCollider.height = 4.5f;
+            castleCollider.center = new Vector3(0f, 2.2f, 0f);
+
+            Material stoneWallMat = CreateMaterial(new Color(0.24f, 0.32f, 0.44f), new Color(0.05f, 0.10f, 0.16f));
+            Material darkTrimMat = CreateMaterial(new Color(0.16f, 0.22f, 0.32f), new Color(0.03f, 0.07f, 0.12f));
+
+            // Base Castle Platform
+            DisableCollider(CreatePrimitive("Castle Courtyard Base", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(0f, 0.25f, 0f), new Vector3(6.8f, 0.5f, 6.8f), darkTrimMat));
+
+            // 4 Castle Curtain Walls
+            DisableCollider(CreatePrimitive("Castle Wall North", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(0f, 1.35f, 2.85f), new Vector3(5.6f, 2.2f, 0.65f), stoneWallMat));
+            DisableCollider(CreatePrimitive("Castle Wall South", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(0f, 1.35f, -2.85f), new Vector3(5.6f, 2.2f, 0.65f), stoneWallMat));
+            DisableCollider(CreatePrimitive("Castle Wall East", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(2.85f, 1.35f, 0f), new Vector3(0.65f, 2.2f, 5.6f), stoneWallMat));
+            DisableCollider(CreatePrimitive("Castle Wall West", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(-2.85f, 1.35f, 0f), new Vector3(0.65f, 2.2f, 5.6f), stoneWallMat));
+
+            // Castle Wall Battlements (Merlons / Kale Burcu Dişleri)
+            for (int m = -1; m <= 1; m++)
+            {
+                float offset = m * 1.45f;
+                DisableCollider(CreatePrimitive("Battlement N", PrimitiveType.Cube, reactorObject.transform,
+                    new Vector3(offset, 2.7f, 2.85f), new Vector3(0.75f, 0.55f, 0.75f), darkTrimMat));
+                DisableCollider(CreatePrimitive("Battlement S", PrimitiveType.Cube, reactorObject.transform,
+                    new Vector3(offset, 2.7f, -2.85f), new Vector3(0.75f, 0.55f, 0.75f), darkTrimMat));
+                DisableCollider(CreatePrimitive("Battlement E", PrimitiveType.Cube, reactorObject.transform,
+                    new Vector3(2.85f, 2.7f, offset), new Vector3(0.75f, 0.55f, 0.75f), darkTrimMat));
+                DisableCollider(CreatePrimitive("Battlement W", PrimitiveType.Cube, reactorObject.transform,
+                    new Vector3(-2.85f, 2.7f, offset), new Vector3(0.75f, 0.55f, 0.75f), darkTrimMat));
+            }
+
+            // 4 Corner Castle Watchtowers (Köşe Kale Kuleleri)
+            Vector3[] towerCorners =
+            {
+                new Vector3(2.95f, 0f, 2.95f),
+                new Vector3(-2.95f, 0f, 2.95f),
+                new Vector3(2.95f, 0f, -2.95f),
+                new Vector3(-2.95f, 0f, -2.95f)
+            };
+            for (int t = 0; t < towerCorners.Length; t++)
+            {
+                Vector3 c = towerCorners[t];
+                DisableCollider(CreatePrimitive($"Castle Watchtower {t + 1}", PrimitiveType.Cylinder, reactorObject.transform,
+                    c + new Vector3(0f, 1.85f, 0f), new Vector3(1.55f, 1.85f, 1.55f), stoneWallMat));
+                DisableCollider(CreatePrimitive($"Watchtower Crown {t + 1}", PrimitiveType.Cylinder, reactorObject.transform,
+                    c + new Vector3(0f, 3.85f, 0f), new Vector3(1.85f, 0.32f, 1.85f), darkTrimMat));
+                DisableCollider(CreatePrimitive($"Watchtower Beacon {t + 1}", PrimitiveType.Sphere, reactorObject.transform,
+                    c + new Vector3(0f, 4.35f, 0f), new Vector3(0.7f, 0.7f, 0.7f), reactorMaterial));
+            }
+
+            // Central Castle Keep (Ana Kale Burcu)
+            DisableCollider(CreatePrimitive("Central Keep Lower", PrimitiveType.Cube, reactorObject.transform,
+                new Vector3(0f, 1.8f, 0f), new Vector3(3.2f, 3.2f, 3.2f), stoneWallMat));
+            DisableCollider(CreatePrimitive("Central Keep Upper", PrimitiveType.Cylinder, reactorObject.transform,
+                new Vector3(0f, 3.6f, 0f), new Vector3(2.4f, 1.2f, 2.4f), darkTrimMat));
+            DisableCollider(CreatePrimitive("Quantum Core", PrimitiveType.Sphere, reactorObject.transform,
+                new Vector3(0f, 5.1f, 0f), new Vector3(2.1f, 2.1f, 2.1f), reactorMaterial));
+
+            reactorRingA = CreateTorus("Reactor Energy Ring A", reactorObject.transform, 4.6f, 0.15f, 48, reactorMaterial).transform;
+            reactorRingA.localPosition = new Vector3(0f, 3.8f, 0f);
             reactorRingA.localRotation = Quaternion.Euler(20f, 0f, 0f);
-            reactorRingB = CreateTorus("Reactor Energy Ring B", reactorObject.transform, 5.3f, 0.12f, 48, reactorMaterial).transform;
-            reactorRingB.localPosition = new Vector3(0f, 1.9f, 0f);
+            reactorRingB = CreateTorus("Reactor Energy Ring B", reactorObject.transform, 5.2f, 0.12f, 48, reactorMaterial).transform;
+            reactorRingB.localPosition = new Vector3(0f, 3.8f, 0f);
             reactorRingB.localRotation = Quaternion.Euler(-18f, 42f, 0f);
 
             GameObject lightObject = new GameObject("Reactor Core Light");
             lightObject.transform.SetParent(reactorObject.transform, false);
-            lightObject.transform.localPosition = new Vector3(0f, 3f, 0f);
+            lightObject.transform.localPosition = new Vector3(0f, 5.2f, 0f);
             Light coreLight = lightObject.AddComponent<Light>();
             coreLight.type = LightType.Point;
-            coreLight.color = new Color(0.1f, 0.75f, 1f);
-            coreLight.intensity = 5f;
-            coreLight.range = 16f;
+            coreLight.color = new Color(0.2f, 0.85f, 1f);
+            coreLight.intensity = 6.5f;
+            coreLight.range = 20f;
             return reactorObject.transform;
+        }
+
+        private static void DisableCollider(GameObject obj)
+        {
+            if (obj == null)
+                return;
+            Collider col = obj.GetComponent<Collider>();
+            if (col != null)
+                col.enabled = false;
         }
 
         private Transform BuildPlayerMech(
@@ -376,18 +444,7 @@ namespace AegisProtocol.Core
                 enemy.AddComponent<HealthComponent>();
                 EnemyAIController ai = enemy.AddComponent<EnemyAIController>();
                 ai.ConfigureRuntime(config, crystalPrefab);
-                GameObject visual = GameObject.CreatePrimitive(
-                    types[i] == EnemyType.HeavySiegeMech || types[i] == EnemyType.OverlordTitanBoss
-                        ? PrimitiveType.Cube
-                        : PrimitiveType.Sphere);
-                visual.name = "Archetype Visual";
-                visual.transform.SetParent(enemy.transform, false);
-                visual.transform.localPosition = Vector3.up * 0.25f;
-                visual.transform.localScale = Vector3.one * (types[i] == EnemyType.OverlordTitanBoss ? 1.1f : 1f);
-                SetMaterial(visual, CreateMaterial(colors[i], colors[i] * 1.35f));
-                Collider visualCollider = visual.GetComponent<Collider>();
-                if (visualCollider != null)
-                    visualCollider.enabled = false;
+                BuildEnemyVisualModel(enemy.transform, types[i], colors[i]);
 
                 definitions[i] = new EnemyPrefabDefinition
                 {
@@ -398,6 +455,128 @@ namespace AegisProtocol.Core
                 };
             }
             return definitions;
+        }
+
+        private void BuildEnemyVisualModel(Transform parent, EnemyType type, Color primaryColor)
+        {
+            Material hullMat = CreateMaterial(primaryColor, primaryColor * 1.15f);
+            Material darkMetalMat = CreateMaterial(new Color(0.18f, 0.22f, 0.28f), new Color(0.05f, 0.07f, 0.1f));
+            Material eyeGlowMat = CreateMaterial(new Color(1f, 0.9f, 0.2f), new Color(2.2f, 1.6f, 0.2f));
+
+            switch (type)
+            {
+                case EnemyType.ScoutDrone:
+                {
+                    // Sleek winged interceptor drone
+                    DisableCollider(CreatePrimitive("PrimaryHull", PrimitiveType.Sphere, parent,
+                        new Vector3(0f, 0.35f, 0f), new Vector3(0.95f, 0.55f, 1.25f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Wing", PrimitiveType.Cube, parent,
+                        new Vector3(-0.75f, 0.35f, -0.1f), new Vector3(0.95f, 0.12f, 0.55f), darkMetalMat,
+                        Quaternion.Euler(0f, -18f, -8f)));
+                    DisableCollider(CreatePrimitive("Right Wing", PrimitiveType.Cube, parent,
+                        new Vector3(0.75f, 0.35f, -0.1f), new Vector3(0.95f, 0.12f, 0.55f), darkMetalMat,
+                        Quaternion.Euler(0f, 18f, 8f)));
+                    DisableCollider(CreatePrimitive("Drone Visor Eye", PrimitiveType.Sphere, parent,
+                        new Vector3(0f, 0.4f, 0.55f), new Vector3(0.42f, 0.25f, 0.3f), eyeGlowMat));
+                    DisableCollider(CreatePrimitive("Nose Gun", PrimitiveType.Cylinder, parent,
+                        new Vector3(0f, 0.22f, 0.72f), new Vector3(0.14f, 0.35f, 0.14f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    break;
+                }
+
+                case EnemyType.RangedStriker:
+                {
+                    // Armored hover-tank with dual cannon turret
+                    DisableCollider(CreatePrimitive("PrimaryHull", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.22f, 0f), new Vector3(1.25f, 0.45f, 1.55f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Track", PrimitiveType.Cube, parent,
+                        new Vector3(-0.75f, 0.12f, 0f), new Vector3(0.28f, 0.38f, 1.7f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Right Track", PrimitiveType.Cube, parent,
+                        new Vector3(0.75f, 0.12f, 0f), new Vector3(0.28f, 0.38f, 1.7f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Turret Dome", PrimitiveType.Sphere, parent,
+                        new Vector3(0f, 0.58f, -0.05f), new Vector3(0.92f, 0.55f, 0.98f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(-0.24f, 0.58f, 0.75f), new Vector3(0.15f, 0.55f, 0.15f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Right Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(0.24f, 0.58f, 0.75f), new Vector3(0.15f, 0.55f, 0.15f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Striker Visor", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.65f, 0.42f), new Vector3(0.55f, 0.18f, 0.2f), eyeGlowMat));
+                    break;
+                }
+
+                case EnemyType.KamikazeDrone:
+                {
+                    // Spiked explosive warhead spider-drone
+                    DisableCollider(CreatePrimitive("PrimaryHull", PrimitiveType.Capsule, parent,
+                        new Vector3(0f, 0.38f, 0f), new Vector3(0.75f, 0.75f, 0.75f), hullMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Blade X1", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.38f, 0f), new Vector3(1.65f, 0.12f, 0.28f), darkMetalMat,
+                        Quaternion.Euler(0f, 35f, 0f)));
+                    DisableCollider(CreatePrimitive("Blade X2", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.38f, 0f), new Vector3(1.65f, 0.12f, 0.28f), darkMetalMat,
+                        Quaternion.Euler(0f, -35f, 0f)));
+                    DisableCollider(CreatePrimitive("Explosive Core", PrimitiveType.Sphere, parent,
+                        new Vector3(0f, 0.65f, 0f), new Vector3(0.55f, 0.55f, 0.55f), eyeGlowMat));
+                    break;
+                }
+
+                case EnemyType.HeavySiegeMech:
+                {
+                    // Bipedal heavy combat robot with shoulder armor and dual arm cannons
+                    DisableCollider(CreatePrimitive("Left Leg", PrimitiveType.Cube, parent,
+                        new Vector3(-0.38f, 0.12f, 0f), new Vector3(0.36f, 0.65f, 0.42f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Right Leg", PrimitiveType.Cube, parent,
+                        new Vector3(0.38f, 0.12f, 0f), new Vector3(0.36f, 0.65f, 0.42f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("PrimaryHull", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.68f, 0f), new Vector3(1.15f, 0.85f, 0.82f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Shoulder Pad", PrimitiveType.Sphere, parent,
+                        new Vector3(-0.75f, 0.92f, 0f), new Vector3(0.55f, 0.48f, 0.65f), hullMat));
+                    DisableCollider(CreatePrimitive("Right Shoulder Pad", PrimitiveType.Sphere, parent,
+                        new Vector3(0.75f, 0.92f, 0f), new Vector3(0.55f, 0.48f, 0.65f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Arm Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(-0.78f, 0.62f, 0.55f), new Vector3(0.24f, 0.55f, 0.24f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Right Arm Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(0.78f, 0.62f, 0.55f), new Vector3(0.24f, 0.55f, 0.24f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Mech Head", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 1.25f, 0.08f), new Vector3(0.55f, 0.38f, 0.52f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Mech Visor", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 1.26f, 0.34f), new Vector3(0.46f, 0.16f, 0.12f), eyeGlowMat));
+                    break;
+                }
+
+                case EnemyType.OverlordTitanBoss:
+                {
+                    // Colossal Overlord Titan Boss Mech with shoulder missile pods & crown
+                    DisableCollider(CreatePrimitive("Left Titan Tread", PrimitiveType.Cube, parent,
+                        new Vector3(-0.52f, 0.12f, 0f), new Vector3(0.46f, 0.65f, 1.25f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Right Titan Tread", PrimitiveType.Cube, parent,
+                        new Vector3(0.52f, 0.12f, 0f), new Vector3(0.46f, 0.65f, 1.25f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("PrimaryHull", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 0.78f, 0f), new Vector3(1.45f, 1.05f, 1.05f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Missile Pod", PrimitiveType.Cube, parent,
+                        new Vector3(-0.88f, 1.25f, -0.1f), new Vector3(0.48f, 0.62f, 0.68f), hullMat));
+                    DisableCollider(CreatePrimitive("Right Missile Pod", PrimitiveType.Cube, parent,
+                        new Vector3(0.88f, 1.25f, -0.1f), new Vector3(0.48f, 0.62f, 0.68f), hullMat));
+                    DisableCollider(CreatePrimitive("Left Siege Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(-0.92f, 0.72f, 0.72f), new Vector3(0.3f, 0.72f, 0.3f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Right Siege Cannon", PrimitiveType.Cylinder, parent,
+                        new Vector3(0.92f, 0.72f, 0.72f), new Vector3(0.3f, 0.72f, 0.3f), darkMetalMat,
+                        Quaternion.Euler(90f, 0f, 0f)));
+                    DisableCollider(CreatePrimitive("Boss Core Chest", PrimitiveType.Sphere, parent,
+                        new Vector3(0f, 0.82f, 0.52f), new Vector3(0.62f, 0.62f, 0.35f), eyeGlowMat));
+                    DisableCollider(CreatePrimitive("Boss Crown Head", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 1.48f, 0.08f), new Vector3(0.68f, 0.48f, 0.62f), darkMetalMat));
+                    DisableCollider(CreatePrimitive("Boss Eyes", PrimitiveType.Cube, parent,
+                        new Vector3(0f, 1.50f, 0.40f), new Vector3(0.58f, 0.18f, 0.12f), eyeGlowMat));
+                    break;
+                }
+            }
         }
 
         private void CreateBuildNodes(Material material)

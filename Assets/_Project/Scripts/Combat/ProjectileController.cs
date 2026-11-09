@@ -149,8 +149,7 @@ namespace AegisProtocol.Combat
             lifetimeRemaining = maxLifetime;
             hasImpacted = false;
             EnsurePhysicsComponents();
-            if (instigatorRole == HealthRole.PlayerMech)
-                ApplyPlayerProjectileVisuals();
+            ApplyProjectileVisuals();
             isInitialized = true;
         }
 
@@ -172,15 +171,19 @@ namespace AegisProtocol.Combat
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         }
 
-        private void ApplyPlayerProjectileVisuals()
+        private void ApplyProjectileVisuals()
         {
+            Renderer rootRenderer = GetComponent<Renderer>();
+            if (rootRenderer != null)
+                rootRenderer.enabled = false;
+
             float widthScale = isMissile
-                ? 0.52f + levelTier * 0.08f
-                : 0.40f + levelTier * 0.07f;
+                ? 0.42f + levelTier * 0.06f
+                : 0.28f + levelTier * 0.05f;
             float lengthScale = isMissile
-                ? 1.15f + levelTier * 0.18f
-                : 0.95f + levelTier * 0.22f;
-            transform.localScale = new Vector3(widthScale, widthScale, lengthScale);
+                ? 1.15f + levelTier * 0.16f
+                : 0.90f + levelTier * 0.16f;
+            transform.localScale = Vector3.one;
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if (litShader != null)
@@ -192,30 +195,60 @@ namespace AegisProtocol.Combat
                 if (runtimeVisualMaterial.HasProperty("_EmissionColor"))
                 {
                     runtimeVisualMaterial.EnableKeyword("_EMISSION");
-                    runtimeVisualMaterial.SetColor("_EmissionColor", projectileColor * (1.8f + levelTier * 0.35f));
+                    runtimeVisualMaterial.SetColor("_EmissionColor", projectileColor * (1.7f + levelTier * 0.3f));
                 }
 
-                Renderer renderer = GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.enabled = true;
-                    renderer.sharedMaterial = runtimeVisualMaterial;
-                }
+                GameObject casing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                casing.name = "Bullet Casing";
+                casing.transform.SetParent(transform, false);
+                casing.transform.localPosition = Vector3.zero;
+                casing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                casing.transform.localScale = new Vector3(widthScale, lengthScale * 0.48f, widthScale);
+                Collider casingCol = casing.GetComponent<Collider>();
+                if (casingCol != null)
+                    casingCol.enabled = false;
+                Renderer casingRen = casing.GetComponent<Renderer>();
+                if (casingRen != null)
+                    casingRen.sharedMaterial = runtimeVisualMaterial;
 
-                if (levelTier >= 3)
+                GameObject nose = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                nose.name = "Bullet Warhead Tip";
+                nose.transform.SetParent(transform, false);
+                nose.transform.localPosition = new Vector3(0f, 0f, lengthScale * 0.45f);
+                nose.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                nose.transform.localScale = new Vector3(widthScale * 0.92f, lengthScale * 0.28f, widthScale * 0.92f);
+                Collider noseCol = nose.GetComponent<Collider>();
+                if (noseCol != null)
+                    noseCol.enabled = false;
+                Renderer noseRen = nose.GetComponent<Renderer>();
+                if (noseRen != null)
+                    noseRen.sharedMaterial = runtimeVisualMaterial;
+
+                if (isMissile || levelTier >= 3)
                 {
-                    PrimitiveType finType = levelTier >= 4 ? PrimitiveType.Cube : PrimitiveType.Sphere;
-                    GameObject core = GameObject.CreatePrimitive(finType);
-                    core.name = "Evolution Fin";
-                    core.transform.SetParent(transform, false);
-                    core.transform.localPosition = Vector3.zero;
-                    core.transform.localScale = new Vector3(1.55f, 0.35f, 0.65f);
-                    Collider finCollider = core.GetComponent<Collider>();
-                    if (finCollider != null)
-                        finCollider.enabled = false;
-                    Renderer finRenderer = core.GetComponent<Renderer>();
-                    if (finRenderer != null)
-                        finRenderer.sharedMaterial = runtimeVisualMaterial;
+                    GameObject finA = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    finA.name = "Tail Fin Horizontal";
+                    finA.transform.SetParent(transform, false);
+                    finA.transform.localPosition = new Vector3(0f, 0f, -lengthScale * 0.36f);
+                    finA.transform.localScale = new Vector3(widthScale * 2.2f, widthScale * 0.18f, lengthScale * 0.26f);
+                    Collider finACol = finA.GetComponent<Collider>();
+                    if (finACol != null)
+                        finACol.enabled = false;
+                    Renderer finARen = finA.GetComponent<Renderer>();
+                    if (finARen != null)
+                        finARen.sharedMaterial = runtimeVisualMaterial;
+
+                    GameObject finB = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    finB.name = "Tail Fin Vertical";
+                    finB.transform.SetParent(transform, false);
+                    finB.transform.localPosition = new Vector3(0f, 0f, -lengthScale * 0.36f);
+                    finB.transform.localScale = new Vector3(widthScale * 0.18f, widthScale * 2.2f, lengthScale * 0.26f);
+                    Collider finBCol = finB.GetComponent<Collider>();
+                    if (finBCol != null)
+                        finBCol.enabled = false;
+                    Renderer finBRen = finB.GetComponent<Renderer>();
+                    if (finBRen != null)
+                        finBRen.sharedMaterial = runtimeVisualMaterial;
                 }
             }
 
