@@ -16,7 +16,7 @@ namespace AegisProtocol.UI
     [DisallowMultipleComponent]
     public sealed class UIManager : MonoBehaviour
     {
-        private static readonly Color BackgroundColor = new Color(0.015f, 0.035f, 0.075f, 0.96f);
+        private static readonly Color BackgroundColor = new Color(0.015f, 0.035f, 0.075f, 0.78f);
         private static readonly Color PanelColor = new Color(0.025f, 0.09f, 0.15f, 0.96f);
         private static readonly Color AccentColor = new Color(0.05f, 0.85f, 1f, 1f);
 
@@ -40,6 +40,7 @@ namespace AegisProtocol.UI
         private GameObject upgradePanel;
         private GameObject pausePanel;
         private GameObject resultPanel;
+        private Transform canvasTransform;
         private Text resultTitle;
         private Text resultDetails;
         private Text buildSelectionText;
@@ -61,6 +62,8 @@ namespace AegisProtocol.UI
         private Slider missileBar;
         private Slider dashBar;
         private Font runtimeFont;
+        private Sprite runtimeWhiteSprite;
+        private Texture2D runtimeWhiteTexture;
         private UpgradeModuleCardConfig[] presentedCards = Array.Empty<UpgradeModuleCardConfig>();
         private GameState stateBeforeAuxiliaryPanel = GameState.MainMenu;
         private float targetDurationSeconds = 900f;
@@ -91,11 +94,18 @@ namespace AegisProtocol.UI
             if (upgradeManager != null)
                 upgradeManager.OnUpgradeOptionsPresented -= HandleUpgradeOptionsPresented;
             Time.timeScale = 1f;
+            if (runtimeWhiteSprite != null)
+                Destroy(runtimeWhiteSprite);
+            if (runtimeWhiteTexture != null)
+                Destroy(runtimeWhiteTexture);
         }
 
         private void Update()
         {
             ResolveSystemsIfNeeded();
+            if (Input.GetKeyDown(KeyCode.F11))
+                ToggleFullscreen();
+
             if (inputReader != null)
             {
                 PlayerInputSnapshot input = inputReader.CurrentSnapshot;
@@ -124,7 +134,9 @@ namespace AegisProtocol.UI
         private void BuildRuntimeCanvas()
         {
             GameObject canvasObject = new GameObject("Aegis Runtime Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            canvasObject.transform.SetParent(transform, false);
+            canvasObject.transform.SetParent(null, false);
+            canvasObject.transform.localScale = Vector3.one;
+            canvasTransform = canvasObject.transform;
             Canvas canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100;
@@ -133,15 +145,40 @@ namespace AegisProtocol.UI
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
+            runtimeWhiteTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+            {
+                name = "Aegis Runtime UI Pixel",
+                hideFlags = HideFlags.DontSave
+            };
+            runtimeWhiteTexture.SetPixel(0, 0, Color.white);
+            runtimeWhiteTexture.Apply();
+            runtimeWhiteSprite = Sprite.Create(runtimeWhiteTexture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f));
+            runtimeWhiteSprite.name = "Aegis Runtime UI Sprite";
+            runtimeWhiteSprite.hideFlags = HideFlags.DontSave;
+
             if (FindFirstObjectByType<EventSystem>() == null)
             {
                 GameObject eventObject = new GameObject("Aegis Event System", typeof(EventSystem), typeof(StandaloneInputModule));
                 DontDestroyOnLoad(eventObject);
             }
 
-            runtimeFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            runtimeFont = TryLoadRuntimeFont("LegacyRuntime.ttf");
             if (runtimeFont == null)
-                runtimeFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                runtimeFont = TryLoadRuntimeFont("Arial.ttf");
+            if (runtimeFont == null)
+                Debug.LogWarning("Aegis UI could not load a built-in font; panels will remain available.", this);
+        }
+
+        private Font TryLoadRuntimeFont(string resourceName)
+        {
+            try
+            {
+                return Resources.GetBuiltinResource<Font>(resourceName);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
 
         private void CreateAllScreens()
@@ -179,7 +216,7 @@ namespace AegisProtocol.UI
         private void BuildBriefing(Transform parent)
         {
             Transform content = CreateVerticalContent(parent, 900f, 900f);
-            CreateText(content, "GÖREV BRİFİNGİ", 38, AccentColor, 66f, FontStyle.Bold);
+            CreateText(content, "GÖREV BRİFİNGİ", 44, AccentColor, 72f, FontStyle.Bold);
             CreateText(content,
                 "Kuantum Reaktörünü beş kuşatma dalgası boyunca savun.\n" +
                 "Üç uydu iletişim terminalini sinyal alanında 30 saniye kalarak hackle.\n" +
@@ -189,9 +226,9 @@ namespace AegisProtocol.UI
                 "Puan: düşman ödülleri, +300 hasarsız dalga, terminal başına +500, kalan Reaktör HP ×10.\n\n" +
                 "WASD hareket • Fare nişan • Sol tık plazma • Sağ tık füze • Space dash\n" +
                 "E etkileşim/inşa • 1/2/3 yapı seçimi • Esc/P duraklatma • F taktik fener",
-                20, Color.white, 390f, FontStyle.Normal);
-            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 64f);
-            AddButton(content, "ANA MENÜ", () => gameManager?.ReturnToMainMenu(), 52f);
+                24, Color.white, 420f, FontStyle.Normal);
+            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 72f, 24);
+            AddButton(content, "ANA MENÜ", () => gameManager?.ReturnToMainMenu(), 60f, 24);
         }
 
         private void BuildHowToPlay(Transform parent)
@@ -219,7 +256,27 @@ namespace AegisProtocol.UI
             AddVolumeSlider(content, "MASTER", 0.8f, value => audioManager?.SetMasterVolume(value));
             AddVolumeSlider(content, "MÜZİK", 0.45f, value => audioManager?.SetBgmVolume(value));
             AddVolumeSlider(content, "SES EFEKTLERİ", 0.8f, value => audioManager?.SetSfxVolume(value));
+            AddButton(content, "TAM EKRAN AÇ / KAPAT  (F11)", ToggleFullscreen, 58f);
             AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 58f);
+        }
+
+        private static void ToggleFullscreen()
+        {
+            if (Screen.fullScreenMode == FullScreenMode.Windowed)
+            {
+                int width = Display.main != null ? Display.main.systemWidth : 1920;
+                int height = Display.main != null ? Display.main.systemHeight : 1080;
+                if (width <= 0 || height <= 0)
+                {
+                    width = 1920;
+                    height = 1080;
+                }
+                Screen.SetResolution(width, height, FullScreenMode.FullScreenWindow);
+            }
+            else
+            {
+                Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
+            }
         }
 
         private void BuildPauseMenu(Transform parent)
@@ -376,6 +433,7 @@ namespace AegisProtocol.UI
 
         private void SetVisibleState(GameState state)
         {
+            SetAllPanelsInactive();
             SetPanel(mainPanel, state == GameState.MainMenu);
             SetPanel(briefingPanel, state == GameState.Briefing);
             SetPanel(hudPanel, state == GameState.WaveActive);
@@ -386,6 +444,18 @@ namespace AegisProtocol.UI
             SetPanel(settingsPanel, false);
             if (state == GameState.Victory || state == GameState.Defeat)
                 UpdateResultSummary(state);
+        }
+
+        private void SetAllPanelsInactive()
+        {
+            SetPanel(mainPanel, false);
+            SetPanel(briefingPanel, false);
+            SetPanel(howToPanel, false);
+            SetPanel(settingsPanel, false);
+            SetPanel(hudPanel, false);
+            SetPanel(upgradePanel, false);
+            SetPanel(pausePanel, false);
+            SetPanel(resultPanel, false);
         }
 
         private void UpdateResultSummary(GameState state)
@@ -433,10 +503,11 @@ namespace AegisProtocol.UI
         private GameObject CreatePanel(string name, Color color)
         {
             GameObject panel = new GameObject(name, typeof(RectTransform), typeof(Image));
-            panel.transform.SetParent(transform.GetChild(0), false);
+            panel.transform.SetParent(canvasTransform, false);
             RectTransform rect = panel.GetComponent<RectTransform>();
             Stretch(rect);
             Image image = panel.GetComponent<Image>();
+            image.sprite = runtimeWhiteSprite;
             image.color = color;
             image.raycastTarget = color.a > 0.05f;
             return panel;
@@ -444,17 +515,21 @@ namespace AegisProtocol.UI
 
         private Transform CreateVerticalContent(Transform parent, float width, float height)
         {
-            GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup));
+            GameObject content = new GameObject("Content", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
             content.transform.SetParent(parent, false);
             RectTransform rect = content.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(width, height);
+            Image cardBg = content.GetComponent<Image>();
+            cardBg.sprite = runtimeWhiteSprite;
+            cardBg.color = new Color(0.01f, 0.03f, 0.065f, 0.90f);
             VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(36, 36, 28, 28);
             layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.spacing = 10f;
+            layout.spacing = 16f;
             layout.childControlWidth = true;
-            layout.childControlHeight = false;
+            layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             return content.transform;
@@ -464,17 +539,22 @@ namespace AegisProtocol.UI
         {
             GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
             textObject.transform.SetParent(parent, false);
+            RectTransform rect = textObject.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(0f, preferredHeight);
             Text text = textObject.GetComponent<Text>();
             text.font = runtimeFont;
             text.text = value;
             text.fontSize = size;
+            text.lineSpacing = 1.18f;
             text.color = color;
             text.fontStyle = style;
             text.alignment = TextAnchor.MiddleCenter;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             text.raycastTarget = false;
-            textObject.GetComponent<LayoutElement>().preferredHeight = preferredHeight;
+            LayoutElement layoutElement = textObject.GetComponent<LayoutElement>();
+            layoutElement.minHeight = preferredHeight;
+            layoutElement.preferredHeight = preferredHeight;
             return text;
         }
 
@@ -482,7 +562,10 @@ namespace AegisProtocol.UI
         {
             GameObject buttonObject = new GameObject("Button - " + label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             buttonObject.transform.SetParent(parent, false);
+            RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+            buttonRect.sizeDelta = new Vector2(0f, height);
             Image image = buttonObject.GetComponent<Image>();
+            image.sprite = runtimeWhiteSprite;
             image.color = PanelColor;
             Button button = buttonObject.GetComponent<Button>();
             ColorBlock colors = button.colors;
@@ -491,7 +574,9 @@ namespace AegisProtocol.UI
             colors.pressedColor = AccentColor;
             colors.selectedColor = colors.highlightedColor;
             button.colors = colors;
-            buttonObject.GetComponent<LayoutElement>().preferredHeight = height;
+            LayoutElement layoutElement = buttonObject.GetComponent<LayoutElement>();
+            layoutElement.minHeight = height;
+            layoutElement.preferredHeight = height;
 
             GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(Text));
             labelObject.transform.SetParent(buttonObject.transform, false);
@@ -516,14 +601,18 @@ namespace AegisProtocol.UI
             CreateText(parent, label, 19, Color.white, 32f, FontStyle.Bold);
             GameObject sliderObject = new GameObject("Slider " + label, typeof(RectTransform), typeof(Slider), typeof(LayoutElement));
             sliderObject.transform.SetParent(parent, false);
-            sliderObject.GetComponent<LayoutElement>().preferredHeight = 32f;
+            LayoutElement sliderLayout = sliderObject.GetComponent<LayoutElement>();
+            sliderLayout.minHeight = 32f;
+            sliderLayout.preferredHeight = 32f;
             RectTransform rect = sliderObject.GetComponent<RectTransform>();
             rect.sizeDelta = new Vector2(600f, 32f);
             Image background = sliderObject.AddComponent<Image>();
+            background.sprite = runtimeWhiteSprite;
             background.color = PanelColor;
             GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
             fillObject.transform.SetParent(sliderObject.transform, false);
             Image fill = fillObject.GetComponent<Image>();
+            fill.sprite = runtimeWhiteSprite;
             fill.color = AccentColor;
             RectTransform fillRect = fillObject.GetComponent<RectTransform>();
             fillRect.anchorMin = Vector2.zero;
@@ -569,6 +658,7 @@ namespace AegisProtocol.UI
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
             Image background = barObject.GetComponent<Image>();
+            background.sprite = runtimeWhiteSprite;
             background.color = PanelColor;
             background.raycastTarget = false;
             GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
@@ -579,6 +669,7 @@ namespace AegisProtocol.UI
             fillRect.offsetMin = new Vector2(2f, 2f);
             fillRect.offsetMax = new Vector2(-2f, -2f);
             Image fill = fillObject.GetComponent<Image>();
+            fill.sprite = runtimeWhiteSprite;
             fill.color = fillColor;
             Slider slider = barObject.GetComponent<Slider>();
             slider.minValue = 0f;
@@ -599,18 +690,6 @@ namespace AegisProtocol.UI
             }
             bar.value = health.HealthRatio;
             label.text = $"{title} HP {health.CurrentHealth:0}/{health.MaxHealth:0}";
-        }
-
-        private void SetAllPanelsInactive()
-        {
-            SetPanel(mainPanel, false);
-            SetPanel(briefingPanel, false);
-            SetPanel(howToPanel, false);
-            SetPanel(settingsPanel, false);
-            SetPanel(hudPanel, false);
-            SetPanel(upgradePanel, false);
-            SetPanel(pausePanel, false);
-            SetPanel(resultPanel, false);
         }
 
         private static void SetPanel(GameObject panel, bool active)

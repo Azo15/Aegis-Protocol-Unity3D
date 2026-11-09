@@ -39,13 +39,15 @@ namespace AegisProtocol.Core
             }
 
             hasBuilt = true;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.38f, 0.46f, 0.58f);
             runtimeRoot = new GameObject("Aegis Runtime Arena");
-            Material floorMaterial = CreateMaterial(new Color(0.025f, 0.07f, 0.12f), new Color(0.02f, 0.12f, 0.2f));
-            Material gridMaterial = CreateMaterial(new Color(0.06f, 0.38f, 0.48f), new Color(0.04f, 0.5f, 0.7f));
-            Material wallMaterial = CreateMaterial(new Color(0.08f, 0.15f, 0.23f));
-            Material reactorMaterial = CreateMaterial(new Color(0.1f, 0.75f, 1f), new Color(0.1f, 0.8f, 2f));
-            Material mechMaterial = CreateMaterial(new Color(0.15f, 0.35f, 0.48f), new Color(0.02f, 0.1f, 0.18f));
-            Material accentMaterial = CreateMaterial(new Color(0.1f, 0.9f, 1f), new Color(0.1f, 1.4f, 2f));
+            Material floorMaterial = CreateMaterial(new Color(0.16f, 0.22f, 0.30f), new Color(0.05f, 0.12f, 0.20f));
+            Material gridMaterial = CreateMaterial(new Color(0.15f, 0.85f, 1.0f), new Color(0.1f, 0.75f, 0.95f));
+            Material wallMaterial = CreateMaterial(new Color(0.28f, 0.36f, 0.48f), new Color(0.06f, 0.12f, 0.20f));
+            Material reactorMaterial = CreateMaterial(new Color(0.15f, 0.9f, 1f), new Color(0.2f, 1.1f, 1.8f));
+            Material mechMaterial = CreateMaterial(new Color(0.25f, 0.55f, 0.78f), new Color(0.08f, 0.25f, 0.40f));
+            Material accentMaterial = CreateMaterial(new Color(0.2f, 0.95f, 1f), new Color(0.2f, 1.2f, 1.8f));
 
             BuildArenaFloor(floorMaterial, gridMaterial, wallMaterial);
             BuildReactor(reactorMaterial, out HealthComponent reactorHealth);
@@ -281,9 +283,6 @@ namespace AegisProtocol.Core
             projectile.transform.localScale = Vector3.one * scale;
             SetMaterial(projectile, material);
             ProjectileController controller = projectile.AddComponent<ProjectileController>();
-            Renderer renderer = projectile.GetComponent<Renderer>();
-            if (renderer != null)
-                renderer.enabled = false;
             projectile.SetActive(false);
             return controller;
         }
@@ -294,7 +293,6 @@ namespace AegisProtocol.Core
             GameObject energyProjectile = CreatePrimitive("Enemy Projectile Template", PrimitiveType.Sphere,
                 templates.transform, Vector3.zero, Vector3.one * 0.36f, projectileMaterial);
             ProjectileController projectileController = energyProjectile.AddComponent<ProjectileController>();
-            energyProjectile.GetComponent<Renderer>().enabled = false;
             energyProjectile.SetActive(false);
 
             EnemyType[] types =
@@ -447,6 +445,11 @@ namespace AegisProtocol.Core
                 cameraObject.tag = "MainCamera";
                 camera = cameraObject.GetComponent<Camera>();
             }
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.015f, 0.035f, 0.075f, 1f);
+            camera.rect = new Rect(0f, 0f, 1f, 1f);
+            camera.nearClipPlane = 0.1f;
+            camera.farClipPlane = 500f;
             return camera;
         }
 
