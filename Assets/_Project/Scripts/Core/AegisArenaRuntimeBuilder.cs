@@ -39,15 +39,18 @@ namespace AegisProtocol.Core
             }
 
             hasBuilt = true;
+            SectorLevelData levelData = manager != null ? manager.CurrentLevelData : SectorLevelConfig.GetLevel(1);
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.38f, 0.46f, 0.58f);
+            RenderSettings.ambientLight = levelData.PersistentNightAtmosphere
+                ? new Color(0.22f, 0.20f, 0.36f)
+                : new Color(0.38f, 0.46f, 0.58f);
             runtimeRoot = new GameObject("Aegis Runtime Arena");
-            Material floorMaterial = CreateMaterial(new Color(0.16f, 0.22f, 0.30f), new Color(0.05f, 0.12f, 0.20f));
-            Material gridMaterial = CreateMaterial(new Color(0.15f, 0.85f, 1.0f), new Color(0.1f, 0.75f, 0.95f));
+            Material floorMaterial = CreateMaterial(levelData.FloorColor, levelData.FloorColor * 0.45f);
+            Material gridMaterial = CreateMaterial(levelData.GridColor, levelData.GridColor * 0.9f);
             Material wallMaterial = CreateMaterial(new Color(0.28f, 0.36f, 0.48f), new Color(0.06f, 0.12f, 0.20f));
-            Material reactorMaterial = CreateMaterial(new Color(0.15f, 0.9f, 1f), new Color(0.2f, 1.1f, 1.8f));
+            Material reactorMaterial = CreateMaterial(levelData.ReactorColor, levelData.ReactorColor * 1.4f);
             Material mechMaterial = CreateMaterial(new Color(0.25f, 0.55f, 0.78f), new Color(0.08f, 0.25f, 0.40f));
-            Material accentMaterial = CreateMaterial(new Color(0.2f, 0.95f, 1f), new Color(0.2f, 1.2f, 1.8f));
+            Material accentMaterial = CreateMaterial(levelData.GridColor, levelData.GridColor * 1.35f);
 
             BuildArenaFloor(floorMaterial, gridMaterial, wallMaterial);
             BuildReactor(reactorMaterial, out HealthComponent reactorHealth);
@@ -65,14 +68,25 @@ namespace AegisProtocol.Core
             if (cameraRig == null)
                 cameraRig = mainCamera.gameObject.AddComponent<IsometricCameraRig>();
             cameraRig.ConfigureRuntime(mech, mechController, inputReader, tacticalSpotlight);
+            if (levelData.PersistentNightAtmosphere)
+                cameraRig.SetTacticalLightEnabled(true);
             mechController.ConfigureRuntimeReferences(mech.Find("Chassis"), mech.Find("Chassis/Turret"), mainCamera);
+            mechController.ApplyMoveSpeedMultiplier(levelData.MoveSpeedMultiplier);
             weaponSystem.ConfigureRuntimeReferences(
                 mech.Find("Chassis/Turret/Plasma Muzzle"), plasmaTemplate, missileTemplate, cameraRig);
+            weaponSystem.ConfigureLevelLoadout(levelData);
+
+            CrystalResourceBank bank = mech.GetComponent<CrystalResourceBank>();
+            if (bank != null)
+                bank.ConfigureStartingBalance(levelData.StartingCrystals, levelData.PickupRadiusBonus);
+            TacticalBuildManager buildManager = mech.GetComponent<TacticalBuildManager>();
+            if (buildManager != null)
+                buildManager.ApplyGlobalTurretFireRateMultiplier(levelData.TurretFireRateBonus);
 
             CreateBuildNodes(reactorMaterial);
             CreateSatelliteTerminals(accentMaterial);
             Transform[] spawnPoints = CreateSpawnPoints(accentMaterial);
-            EnemyPrefabDefinition[] enemyDefinitions = CreateEnemyTemplates(crystalTemplate, accentMaterial);
+            EnemyPrefabDefinition[] enemyDefinitions = CreateEnemyTemplates(crystalTemplate, accentMaterial, levelData);
 
             if (manager == null)
             {
@@ -297,7 +311,10 @@ namespace AegisProtocol.Core
             return controller;
         }
 
-        private EnemyPrefabDefinition[] CreateEnemyTemplates(EnergyCrystalPickup crystalPrefab, Material projectileMaterial)
+        private EnemyPrefabDefinition[] CreateEnemyTemplates(
+            EnergyCrystalPickup crystalPrefab,
+            Material projectileMaterial,
+            SectorLevelData levelData)
         {
             GameObject templates = GetOrCreateTemplatesRoot();
             GameObject energyProjectile = CreatePrimitive("Enemy Projectile Template", PrimitiveType.Sphere,
@@ -336,7 +353,17 @@ namespace AegisProtocol.Core
                 EnemyArchetypeConfig config = ScriptableObject.CreateInstance<EnemyArchetypeConfig>();
                 config.name = types[i] + " Runtime Config";
                 runtimeConfigs.Add(config);
-                config.Configure(types[i], hp[i], speed[i], range[i], damage[i], cooldown[i], score[i], crystals[i], scale[i], colors[i]);
+                config.Configure(
+                    types[i],
+                    hp[i] * levelData.EnemyHealthMultiplier,
+                    speed[i] * levelData.EnemySpeedMultiplier,
+                    range[i],
+                    damage[i],
+                    cooldown[i],
+                    score[i] * levelData.LevelNumber,
+                    crystals[i],
+                    scale[i],
+                    colors[i]);
                 if (types[i] == EnemyType.RangedStriker || types[i] == EnemyType.OverlordTitanBoss)
                     config.SetRuntimeProjectilePrefab(energyProjectile);
 

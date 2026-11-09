@@ -342,18 +342,32 @@ namespace AegisProtocol.Systems
 
         private static WaveSpawnGroup[] CreateDefaultComposition(int waveNumber)
         {
+            int bonus = GameManager.Instance != null
+                ? GameManager.Instance.CurrentLevelData.ExtraEnemiesPerGroup
+                : 0;
             switch (waveNumber)
             {
                 case 1:
-                    return new[] { Group(EnemyType.ScoutDrone, 8, 0) };
+                    return new[] { Group(EnemyType.ScoutDrone, 8 + bonus, 0) };
                 case 2:
-                    return new[] { Group(EnemyType.ScoutDrone, 6, 1), Group(EnemyType.RangedStriker, 4, 2) };
+                    return new[] { Group(EnemyType.ScoutDrone, 6 + bonus, 1), Group(EnemyType.RangedStriker, 4 + bonus, 2) };
                 case 3:
-                    return new[] { Group(EnemyType.KamikazeDrone, 8, 1), Group(EnemyType.RangedStriker, 6, 2) };
+                    return new[] { Group(EnemyType.KamikazeDrone, 8 + bonus, 1), Group(EnemyType.RangedStriker, 6 + bonus, 2) };
                 case 4:
-                    return new[] { Group(EnemyType.HeavySiegeMech, 3, 0), Group(EnemyType.ScoutDrone, 5, 0), Group(EnemyType.RangedStriker, 4, 2), Group(EnemyType.KamikazeDrone, 3, 1) };
+                    return new[]
+                    {
+                        Group(EnemyType.HeavySiegeMech, 3 + Mathf.Max(0, bonus / 2), 0),
+                        Group(EnemyType.ScoutDrone, 5 + bonus, 0),
+                        Group(EnemyType.RangedStriker, 4 + bonus, 2),
+                        Group(EnemyType.KamikazeDrone, 3 + bonus, 1)
+                    };
                 case 5:
-                    return new[] { Group(EnemyType.OverlordTitanBoss, 1, 0), Group(EnemyType.ScoutDrone, 8, 1), Group(EnemyType.RangedStriker, 6, 2) };
+                    return new[]
+                    {
+                        Group(EnemyType.OverlordTitanBoss, 1, 0),
+                        Group(EnemyType.ScoutDrone, 8 + bonus, 1),
+                        Group(EnemyType.RangedStriker, 6 + bonus, 2)
+                    };
                 default:
                     return Array.Empty<WaveSpawnGroup>();
             }
