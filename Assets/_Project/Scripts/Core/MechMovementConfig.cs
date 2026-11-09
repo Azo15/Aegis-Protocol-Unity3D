@@ -7,11 +7,11 @@ namespace AegisProtocol.Core
     public sealed class MechMovementConfig : ScriptableObject
     {
         [Header("Movement")]
-        [SerializeField, Min(0f)] private float moveSpeed = 8f;
-        [SerializeField, Min(0f)] private float acceleration = 36f;
-        [SerializeField, Min(0f)] private float deceleration = 48f;
-        [SerializeField, Min(0f)] private float chassisTurnSpeed = 10f;
-        [SerializeField, Min(0f)] private float turretTurnSpeed = 18f;
+        [SerializeField, Min(0f)] private float moveSpeed = 10.5f;
+        [SerializeField, Min(0f)] private float acceleration = 42f;
+        [SerializeField, Min(0f)] private float deceleration = 54f;
+        [SerializeField, Min(0f)] private float chassisTurnSpeed = 12f;
+        [SerializeField, Min(0f)] private float turretTurnSpeed = 22f;
 
         [Header("Dash")]
         [SerializeField, Min(0f)] private float dashSpeed = 22f;

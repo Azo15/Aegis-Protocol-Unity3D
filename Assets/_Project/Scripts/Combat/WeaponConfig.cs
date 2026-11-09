@@ -7,25 +7,25 @@ namespace AegisProtocol.Combat
     public sealed class WeaponConfig : ScriptableObject
     {
         [Header("Primary: Plasma Cannon")]
-        [SerializeField, Min(0f)] private float primaryDamage = 25f;
-        [SerializeField, Min(0.01f)] private float primaryFireRate = 6f;
-        [SerializeField, Min(0f)] private float primaryProjectileSpeed = 28f;
-        [SerializeField, Min(0f)] private float primaryHeatPerShot = 8f;
+        [SerializeField, Min(0f)] private float primaryDamage = 38f;
+        [SerializeField, Min(0.01f)] private float primaryFireRate = 7.5f;
+        [SerializeField, Min(0f)] private float primaryProjectileSpeed = 32f;
+        [SerializeField, Min(0f)] private float primaryHeatPerShot = 5.5f;
         [SerializeField, Min(0.01f)] private float primaryLifetime = 3f;
 
         [Header("Secondary: Guided Micro-Missile")]
-        [SerializeField, Min(0f)] private float missileDamage = 80f;
-        [SerializeField, Min(0.1f)] private float missileExplosionRadius = 4f;
+        [SerializeField, Min(0f)] private float missileDamage = 110f;
+        [SerializeField, Min(0.1f)] private float missileExplosionRadius = 5f;
         [SerializeField, Min(0f)] private float missileCooldown = 2f;
-        [SerializeField, Min(0f)] private float missileSpeed = 18f;
-        [SerializeField, Min(0f)] private float missileTurnSpeed = 240f;
-        [SerializeField, Min(0f)] private float missileHeatPerShot = 28f;
+        [SerializeField, Min(0f)] private float missileSpeed = 22f;
+        [SerializeField, Min(0f)] private float missileTurnSpeed = 260f;
+        [SerializeField, Min(0f)] private float missileHeatPerShot = 22f;
         [SerializeField, Min(0.01f)] private float missileLifetime = 4.5f;
 
         [Header("Heat")]
         [SerializeField, Min(1f)] private float maximumHeat = 100f;
-        [SerializeField, Min(0f)] private float coolingRate = 22f;
-        [SerializeField, Min(0f)] private float overheatLockoutDuration = 2.5f;
+        [SerializeField, Min(0f)] private float coolingRate = 28f;
+        [SerializeField, Min(0f)] private float overheatLockoutDuration = 2.0f;
 
         public float PrimaryDamage => primaryDamage;
         public float PrimaryFireRate => primaryFireRate;

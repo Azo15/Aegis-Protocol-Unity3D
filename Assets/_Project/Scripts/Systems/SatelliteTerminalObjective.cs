@@ -11,8 +11,8 @@ namespace AegisProtocol.Systems
         private const float TerminalScoreReward = 500f;
 
         [SerializeField] private string terminalId = "Terminal_North";
-        [SerializeField, Min(0.1f)] private float hackRadius = 5.5f;
-        [SerializeField, Min(0.1f)] private float requiredHackDuration = 30f;
+        [SerializeField, Min(0.1f)] private float hackRadius = 6.5f;
+        [SerializeField, Min(0.1f)] private float requiredHackDuration = 12f;
         [SerializeField] private Renderer[] statusRenderers = Array.Empty<Renderer>();
         [SerializeField] private Light[] statusLights = Array.Empty<Light>();
         [SerializeField] private Color inactiveColor = new Color(1f, 0.35f, 0.08f);

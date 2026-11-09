@@ -330,8 +330,19 @@ namespace AegisProtocol.UI
             dashText = CreateHudText(parent, "DASH", new Vector2(230f, 82f), new Vector2(0.5f, 0f), 17, TextAnchor.MiddleCenter);
             dashBar = CreateHudBar(parent, new Vector2(230f, 60f), new Vector2(0.5f, 0f), new Vector2(180f, 14f), AccentColor);
             crystalText = CreateHudText(parent, string.Empty, new Vector2(0f, 40f), new Vector2(0.5f, 0f), 21, TextAnchor.MiddleCenter);
-            buildSelectionText = CreateHudText(parent, string.Empty, new Vector2(0f, 0f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
-            interactPromptText = CreateHudText(parent, string.Empty, new Vector2(0f, 195f), new Vector2(0.5f, 0f), 20, TextAnchor.MiddleCenter);
+            buildSelectionText = CreateHudText(parent, string.Empty, new Vector2(0f, 10f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
+            interactPromptText = CreateHudText(parent, string.Empty, new Vector2(0f, 188f), new Vector2(0.5f, 0f), 24, TextAnchor.MiddleCenter);
+            interactPromptText.color = new Color(0.2f, 1f, 0.55f, 1f);
+
+            Text guideBanner = CreateHudText(
+                parent,
+                "GÖREV: Ortadaki Mavi Reaktörü Koru! | WASD: Hareket | SOL TIK: Ateş | SAĞ TIK: Füze | Mavi Halkada [E]: Kule Kur | Turuncu Halkada Dur: Uydu Hackle",
+                new Vector2(0f, -18f),
+                new Vector2(0.5f, 1f),
+                17,
+                TextAnchor.UpperCenter);
+            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(1180f, 48f);
+            guideBanner.color = new Color(0.75f, 0.96f, 1f, 0.95f);
         }
 
         private void ResolveSystems()

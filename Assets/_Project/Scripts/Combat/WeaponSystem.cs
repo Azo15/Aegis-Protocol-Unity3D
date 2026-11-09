@@ -285,7 +285,10 @@ namespace AegisProtocol.Combat
 
         private Vector3 GetMuzzlePosition()
         {
-            return muzzleTransform != null ? muzzleTransform.position : transform.position + GetAimDirection();
+            Vector3 dir = GetAimDirection();
+            Vector3 pos = muzzleTransform != null ? muzzleTransform.position : transform.position + dir * 2.1f;
+            pos.y = 1.05f;
+            return pos;
         }
 
         private bool CanUseWeapons()
@@ -297,8 +300,7 @@ namespace AegisProtocol.Combat
             }
 
             GameManager manager = GameManager.Instance;
-            return manager == null || manager.CurrentState == GameState.WaveActive ||
-                   manager.CurrentState == GameState.Briefing;
+            return manager == null || manager.CurrentState == GameState.WaveActive;
         }
 
         private static bool IsFinitePositive(float value)

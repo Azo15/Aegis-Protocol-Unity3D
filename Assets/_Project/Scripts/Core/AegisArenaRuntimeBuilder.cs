@@ -202,7 +202,7 @@ namespace AegisProtocol.Core
         {
             GameObject mech = new GameObject("Player Mech");
             mech.transform.SetParent(runtimeRoot.transform, false);
-            mech.transform.position = new Vector3(0f, 1.2f, -27f);
+            mech.transform.position = new Vector3(0f, 1.1f, -8f);
             Rigidbody body = mech.AddComponent<Rigidbody>();
             body.mass = 4f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -214,24 +214,29 @@ namespace AegisProtocol.Core
 
             Transform chassis = new GameObject("Chassis").transform;
             chassis.SetParent(mech.transform, false);
-            CreatePrimitive("Lower Chassis", PrimitiveType.Cube, chassis,
+            GameObject lowerChassis = CreatePrimitive("Lower Chassis", PrimitiveType.Cube, chassis,
                 new Vector3(0f, -0.15f, 0f), new Vector3(2.4f, 0.75f, 3.2f), bodyMaterial);
-            CreatePrimitive("Left Track", PrimitiveType.Cube, chassis,
+            GameObject leftTrack = CreatePrimitive("Left Track", PrimitiveType.Cube, chassis,
                 new Vector3(-1.15f, -0.35f, 0f), new Vector3(0.35f, 0.55f, 3.4f), accentMaterial);
-            CreatePrimitive("Right Track", PrimitiveType.Cube, chassis,
+            GameObject rightTrack = CreatePrimitive("Right Track", PrimitiveType.Cube, chassis,
                 new Vector3(1.15f, -0.35f, 0f), new Vector3(0.35f, 0.55f, 3.4f), accentMaterial);
+            lowerChassis.GetComponent<Collider>().enabled = false;
+            leftTrack.GetComponent<Collider>().enabled = false;
+            rightTrack.GetComponent<Collider>().enabled = false;
 
             Transform turret = new GameObject("Turret").transform;
             turret.SetParent(chassis, false);
-            turret.localPosition = new Vector3(0f, 0.5f, 0f);
-            CreatePrimitive("Turret Armor", PrimitiveType.Sphere, turret,
+            turret.localPosition = new Vector3(0f, 0.35f, 0f);
+            GameObject turretArmor = CreatePrimitive("Turret Armor", PrimitiveType.Sphere, turret,
                 new Vector3(0f, 0.1f, 0f), new Vector3(1.5f, 0.85f, 1.6f), accentMaterial);
-            CreatePrimitive("Plasma Barrel", PrimitiveType.Cylinder, turret,
-                new Vector3(0f, 0.15f, 1.15f), new Vector3(0.22f, 0.85f, 0.22f), bodyMaterial,
+            GameObject plasmaBarrel = CreatePrimitive("Plasma Barrel", PrimitiveType.Cylinder, turret,
+                new Vector3(0f, 0.05f, 1.15f), new Vector3(0.24f, 0.85f, 0.24f), bodyMaterial,
                 Quaternion.Euler(90f, 0f, 0f));
+            turretArmor.GetComponent<Collider>().enabled = false;
+            plasmaBarrel.GetComponent<Collider>().enabled = false;
             Transform muzzle = new GameObject("Plasma Muzzle").transform;
             muzzle.SetParent(turret, false);
-            muzzle.localPosition = new Vector3(0f, 0.15f, 2f);
+            muzzle.localPosition = new Vector3(0f, 0.05f, 2.0f);
             muzzle.localRotation = Quaternion.identity;
 
             GameObject spotlightObject = new GameObject("Tactical Spot Light");
@@ -255,9 +260,11 @@ namespace AegisProtocol.Core
             mech.AddComponent<MechInteractionScanner>();
             mech.AddComponent<TacticalBuildManager>();
 
+            Material plasmaMat = CreateMaterial(new Color(0.3f, 1f, 1f), new Color(0.4f, 1.8f, 2.2f));
+            Material missileMat = CreateMaterial(new Color(1f, 0.65f, 0.15f), new Color(1.8f, 0.9f, 0.2f));
             crystalTemplate = CreateCrystalTemplate(accentMaterial);
-            plasmaTemplate = CreateProjectileTemplate("Plasma Projectile Template", accentMaterial, 0.28f);
-            missileTemplate = CreateProjectileTemplate("Missile Projectile Template", bodyMaterial, 0.48f);
+            plasmaTemplate = CreateProjectileTemplate("Plasma Projectile Template", plasmaMat, 0.45f);
+            missileTemplate = CreateProjectileTemplate("Missile Projectile Template", missileMat, 0.62f);
             return mech.transform;
         }
 
@@ -267,7 +274,7 @@ namespace AegisProtocol.Core
             GameObject crystal = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             crystal.name = "Energy Crystal Pickup Template";
             crystal.transform.SetParent(templates.transform, false);
-            crystal.transform.localScale = Vector3.one * 0.55f;
+            crystal.transform.localScale = Vector3.one * 0.7f;
             SetMaterial(crystal, material);
             crystal.AddComponent<EnergyCrystalPickup>();
             crystal.SetActive(false);
@@ -281,6 +288,9 @@ namespace AegisProtocol.Core
             projectile.name = name;
             projectile.transform.SetParent(templates.transform, false);
             projectile.transform.localScale = Vector3.one * scale;
+            SphereCollider sc = projectile.GetComponent<SphereCollider>();
+            if (sc != null)
+                sc.radius = 0.85f;
             SetMaterial(projectile, material);
             ProjectileController controller = projectile.AddComponent<ProjectileController>();
             projectile.SetActive(false);
@@ -303,21 +313,21 @@ namespace AegisProtocol.Core
                 EnemyType.HeavySiegeMech,
                 EnemyType.OverlordTitanBoss
             };
-            float[] hp = { 75f, 100f, 45f, 450f, 3000f };
-            float[] speed = { 4.5f, 3.2f, 6.5f, 2f, 1.7f };
-            float[] range = { 1.8f, 10f, 1.2f, 2.2f, 14f };
-            float[] damage = { 10f, 12f, 55f, 45f, 35f };
-            float[] cooldown = { 1.5f, 1.6f, 1f, 2.5f, 1.1f };
+            float[] hp = { 60f, 90f, 40f, 360f, 2200f };
+            float[] speed = { 2.9f, 2.5f, 4.6f, 1.75f, 1.45f };
+            float[] range = { 2.2f, 10f, 1.5f, 2.5f, 14f };
+            float[] damage = { 6f, 8f, 30f, 25f, 22f };
+            float[] cooldown = { 1.6f, 1.8f, 1.2f, 2.5f, 1.3f };
             int[] score = { 50, 100, 75, 250, 1500 };
-            int[] crystals = { 5, 8, 6, 20, 100 };
-            float[] scale = { 0.9f, 1f, 0.75f, 1.7f, 3.2f };
+            int[] crystals = { 15, 20, 18, 35, 100 };
+            float[] scale = { 1.15f, 1.25f, 1.0f, 1.8f, 3.2f };
             Color[] colors =
             {
-                new Color(0.1f, 0.8f, 1f),
-                new Color(1f, 0.45f, 0.1f),
+                new Color(1f, 0.3f, 0.35f),
+                new Color(1f, 0.55f, 0.1f),
                 new Color(1f, 0.12f, 0.08f),
-                new Color(0.3f, 0.4f, 0.5f),
-                new Color(0.8f, 0.1f, 0.85f)
+                new Color(0.75f, 0.35f, 0.9f),
+                new Color(1f, 0.1f, 0.85f)
             };
 
             EnemyPrefabDefinition[] definitions = new EnemyPrefabDefinition[types.Length];
@@ -334,7 +344,8 @@ namespace AegisProtocol.Core
                 enemy.SetActive(false);
                 enemy.transform.SetParent(templates.transform, false);
                 SphereCollider collider = enemy.AddComponent<SphereCollider>();
-                collider.radius = 0.8f;
+                collider.radius = 1.25f;
+                collider.center = new Vector3(0f, 0.3f, 0f);
                 enemy.AddComponent<HealthComponent>();
                 EnemyAIController ai = enemy.AddComponent<EnemyAIController>();
                 ai.ConfigureRuntime(config, crystalPrefab);
@@ -344,9 +355,9 @@ namespace AegisProtocol.Core
                         : PrimitiveType.Sphere);
                 visual.name = "Archetype Visual";
                 visual.transform.SetParent(enemy.transform, false);
-                visual.transform.localPosition = Vector3.up * 0.45f;
+                visual.transform.localPosition = Vector3.up * 0.25f;
                 visual.transform.localScale = Vector3.one * (types[i] == EnemyType.OverlordTitanBoss ? 1.1f : 1f);
-                SetMaterial(visual, CreateMaterial(colors[i], colors[i] * 1.2f));
+                SetMaterial(visual, CreateMaterial(colors[i], colors[i] * 1.35f));
                 Collider visualCollider = visual.GetComponent<Collider>();
                 if (visualCollider != null)
                     visualCollider.enabled = false;
@@ -367,26 +378,33 @@ namespace AegisProtocol.Core
             const int nodeCount = 12;
             for (int i = 0; i < nodeCount; i++)
             {
-                float angle = i * Mathf.PI * 2f / nodeCount;
-                Vector3 position = new Vector3(Mathf.Sin(angle) * 24f, 0.25f, Mathf.Cos(angle) * 24f);
+                bool innerRing = i < 6;
+                int ringIndex = innerRing ? i : i - 6;
+                float radius = innerRing ? 10.5f : 18.5f;
+                float angle = (ringIndex + (innerRing ? 0f : 0.5f)) * Mathf.PI * 2f / 6f;
+                Vector3 position = new Vector3(Mathf.Sin(angle) * radius, 0.25f, Mathf.Cos(angle) * radius);
                 GameObject node = new GameObject($"BuildNode_{i + 1:00}");
                 node.transform.SetParent(runtimeRoot.transform, false);
                 node.transform.position = position;
                 BuildNode buildNode = node.AddComponent<BuildNode>();
                 buildNode.ConfigureRuntime($"BuildNode_{i + 1:00}");
                 BoxCollider collider = node.AddComponent<BoxCollider>();
-                collider.size = new Vector3(3.4f, 1.5f, 3.4f);
+                collider.size = new Vector3(4.2f, 2.0f, 4.2f);
                 collider.isTrigger = true;
-                CreatePrimitive("Build Socket", PrimitiveType.Cylinder, node.transform,
-                    Vector3.zero, new Vector3(2f, 0.08f, 2f), material);
+                GameObject socket = CreatePrimitive("Build Socket", PrimitiveType.Cylinder, node.transform,
+                    Vector3.zero, new Vector3(2.2f, 0.08f, 2.2f), material);
+                socket.GetComponent<Collider>().enabled = false;
+                GameObject ring = CreateTorus("Build Node Ring", node.transform, 1.55f, 0.06f, 24, material);
+                ring.transform.localPosition = new Vector3(0f, 0.1f, 0f);
             }
         }
 
         private void CreateSatelliteTerminals(Material material)
         {
-            CreateTerminal("Terminal_North", new Vector3(0f, 0f, 42f), material);
-            CreateTerminal("Terminal_West", new Vector3(-42f, 0f, 0f), material);
-            CreateTerminal("Terminal_South", new Vector3(0f, 0f, -42f), material);
+            Material terminalMat = CreateMaterial(new Color(1f, 0.55f, 0.1f), new Color(1.4f, 0.6f, 0.1f));
+            CreateTerminal("Terminal_North", new Vector3(0f, 0f, 23f), terminalMat);
+            CreateTerminal("Terminal_West", new Vector3(-23f, 0f, 0f), terminalMat);
+            CreateTerminal("Terminal_East", new Vector3(23f, 0f, 0f), terminalMat);
         }
 
         private void CreateTerminal(string terminalId, Vector3 position, Material material)

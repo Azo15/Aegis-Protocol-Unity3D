@@ -17,7 +17,7 @@ namespace AegisProtocol.Combat
         [SerializeField] private Transform turretTransform = null;
         [SerializeField] private Camera aimCamera;
         [SerializeField] private LayerMask aimSurfaceMask = ~0;
-        [SerializeField] private bool allowBriefingInput = true;
+        [SerializeField] private bool allowBriefingInput = false;
 
         private readonly RaycastHit[] aimHits = new RaycastHit[24];
         private Rigidbody body;
@@ -216,12 +216,22 @@ namespace AegisProtocol.Combat
             if (turretTransform == null)
                 return;
 
+            if (float.IsNaN(pointerPosition.x) || float.IsNaN(pointerPosition.y) ||
+                float.IsInfinity(pointerPosition.x) || float.IsInfinity(pointerPosition.y) ||
+                pointerPosition.x < 0f || pointerPosition.y < 0f ||
+                pointerPosition.x > Screen.width || pointerPosition.y > Screen.height)
+            {
+                return;
+            }
+
             if (aimCamera == null)
                 aimCamera = Camera.main;
             if (aimCamera == null)
                 return;
 
             Ray ray = aimCamera.ScreenPointToRay(pointerPosition);
+            if (ray.direction.sqrMagnitude <= 0.0001f)
+                return;
             if (!TryGetAimPoint(ray, out Vector3 hitPoint))
                 return;
 

@@ -7,7 +7,7 @@ namespace AegisProtocol.Systems
     [DisallowMultipleComponent]
     public sealed class CrystalResourceBank : MonoBehaviour
     {
-        [SerializeField, Min(0)] private int startingBalance = 100;
+        [SerializeField, Min(0)] private int startingBalance = 150;
         [SerializeField, Min(0.1f)] private float pickupRadiusMultiplier = 1f;
         private int currentBalance;
 
@@ -20,8 +20,11 @@ namespace AegisProtocol.Systems
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
-                return;
+                if (Instance.gameObject == gameObject)
+                {
+                    Destroy(this);
+                    return;
+                }
             }
 
             Instance = this;

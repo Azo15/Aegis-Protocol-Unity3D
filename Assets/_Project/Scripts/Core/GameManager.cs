@@ -96,10 +96,12 @@ namespace AegisProtocol.Core
 
         public void ConfigureObjectives(HealthComponent playerMech, HealthComponent centralReactor)
         {
+            UnbindObjectiveEvents();
             if (playerMech != null)
                 mechHealth = playerMech;
             if (centralReactor != null)
                 reactorHealth = centralReactor;
+            BindObjectiveEvents();
         }
 
         /// <summary>Finds objective health components for a newly opened gameplay scene.</summary>
@@ -113,11 +115,16 @@ namespace AegisProtocol.Core
                 if (health == null)
                     continue;
 
-                if (mechHealth == null && health.Role == HealthRole.PlayerMech)
+                if (health.Role == HealthRole.PlayerMech)
                     mechHealth = health;
-                else if (reactorHealth == null && health.Role == HealthRole.Reactor)
+                else if (health.Role == HealthRole.Reactor)
                     reactorHealth = health;
             }
+
+            if (mechHealth != null && mechHealth.IsDead)
+                mechHealth.Initialize();
+            if (reactorHealth != null && reactorHealth.IsDead)
+                reactorHealth.Initialize();
 
             BindObjectiveEvents();
             if (mechHealth == null || reactorHealth == null)
@@ -127,7 +134,6 @@ namespace AegisProtocol.Core
                     "(or explicit Inspector references) before it can evaluate mission endings.", this);
             }
 
-            CheckObjectiveFailure();
             PublishSnapshot();
         }
 
@@ -141,6 +147,10 @@ namespace AegisProtocol.Core
             elapsedSeconds = 0f;
             finalBossDefeated = false;
             completedTerminalIds.Clear();
+            if (mechHealth != null)
+                mechHealth.Initialize();
+            if (reactorHealth != null)
+                reactorHealth.Initialize();
             OnScoreChanged?.Invoke(totalScore);
             SetState(GameState.Briefing);
             PublishSnapshot();
