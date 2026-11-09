@@ -128,7 +128,13 @@ namespace AegisProtocol.Systems
             ApplyVisualState(completedColor, true);
             GameManager manager = GameManager.Instance;
             if (manager != null && manager.RegisterTerminalCompleted(terminalId))
+            {
                 manager.AddScore(Mathf.RoundToInt(TerminalScoreReward));
+                if (CrystalResourceBank.Instance != null)
+                    CrystalResourceBank.Instance.AddCrystals(75);
+                if (playerMech != null && !playerMech.IsDead)
+                    playerMech.Heal(150f);
+            }
 
             OnTerminalProgressChanged?.Invoke(progressSeconds, requiredHackDuration);
             OnTerminalCompleted?.Invoke(this);

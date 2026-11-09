@@ -9,7 +9,7 @@ namespace AegisProtocol.Combat
     [RequireComponent(typeof(Rigidbody), typeof(HealthComponent), typeof(PlayerInputReader))]
     public sealed class MechController : MonoBehaviour
     {
-        private const float DefaultPlayerMaxHealth = 200f;
+        private const float DefaultPlayerMaxHealth = 450f;
 
         [Header("References")]
         [SerializeField] private MechMovementConfig movementConfig;

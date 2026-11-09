@@ -36,12 +36,14 @@ namespace AegisProtocol.Core
         private float elapsedSeconds;
         private float nextSnapshotTime;
         private bool finalBossDefeated;
+        private string failureReason = string.Empty;
 
         public event Action<GameStateChangedEvent> OnGameStateChanged;
         public event Action<int> OnScoreChanged;
         public event Action<GameStateSnapshot> OnSessionSnapshotChanged;
 
         public GameState CurrentState => state;
+        public string FailureReason => failureReason;
         public int CurrentLevel => currentLevel;
         public int MaxUnlockedLevel => maxUnlockedLevel;
         public int TotalLevels => SectorLevelConfig.TotalLevels;
@@ -200,6 +202,7 @@ namespace AegisProtocol.Core
             totalScore = 0;
             elapsedSeconds = 0f;
             finalBossDefeated = false;
+            failureReason = string.Empty;
             completedTerminalIds.Clear();
             if (mechHealth != null)
                 mechHealth.Initialize();
@@ -234,9 +237,14 @@ namespace AegisProtocol.Core
 
             completedWaves = currentWave;
             if (completedWaves < totalWaves)
+            {
                 SetState(GameState.WaveUpgradeSelection);
+            }
             else
+            {
+                finalBossDefeated = true;
                 TryCompleteVictory();
+            }
 
             PublishSnapshot();
             return true;
@@ -349,15 +357,30 @@ namespace AegisProtocol.Core
 
         private void HandleObjectiveDeath(HealthComponent target, GameObject instigator)
         {
-            if (target == mechHealth || target == reactorHealth)
+            if (target == mechHealth)
+            {
+                failureReason = "KAYBETME NEDENİ: Robotunun (Mech) Canı Sıfırlandı!\n(İpucu: Düşmanlardan uzaklaşmak için SPACE ile Dash at veya Onarım Kulesi kur)";
                 SetState(GameState.Defeat);
+            }
+            else if (target == reactorHealth)
+            {
+                failureReason = "KAYBETME NEDENİ: Ortadaki Mavi Kuantum Reaktörü Yıkıldı!\n(İpucu: Reaktörün etrafındaki mavi halkalara [E] ile Lazer ve EMP Kulesi kur)";
+                SetState(GameState.Defeat);
+            }
         }
 
         private void CheckObjectiveFailure()
         {
-            if ((mechHealth != null && mechHealth.IsDead) ||
-                (reactorHealth != null && reactorHealth.IsDead))
+            if (mechHealth != null && mechHealth.IsDead)
             {
+                if (string.IsNullOrEmpty(failureReason))
+                    failureReason = "KAYBETME NEDENİ: Robotunun (Mech) Canı Sıfırlandı!\n(İpucu: Düşmanlardan uzaklaşmak için SPACE ile Dash at veya Onarım Kulesi kur)";
+                SetState(GameState.Defeat);
+            }
+            else if (reactorHealth != null && reactorHealth.IsDead)
+            {
+                if (string.IsNullOrEmpty(failureReason))
+                    failureReason = "KAYBETME NEDENİ: Ortadaki Mavi Kuantum Reaktörü Yıkıldı!\n(İpucu: Reaktörün etrafındaki mavi halkalara [E] ile Lazer ve EMP Kulesi kur)";
                 SetState(GameState.Defeat);
             }
         }
@@ -366,9 +389,7 @@ namespace AegisProtocol.Core
         {
             bool objectivesAlive = mechHealth != null && reactorHealth != null &&
                                    !mechHealth.IsDead && !reactorHealth.IsDead;
-            bool missionComplete = completedWaves >= totalWaves &&
-                                   CompletedTerminals >= requiredTerminals &&
-                                   finalBossDefeated;
+            bool missionComplete = completedWaves >= totalWaves && finalBossDefeated;
 
             if (!objectivesAlive || !missionComplete)
                 return false;

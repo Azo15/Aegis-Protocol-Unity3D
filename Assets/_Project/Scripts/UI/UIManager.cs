@@ -30,6 +30,7 @@ namespace AegisProtocol.UI
         private TacticalBuildManager buildManager;
         private MechInteractionScanner interactionScanner;
         private RogueliteUpgradeManager upgradeManager;
+        private WaveSpawnerManager waveSpawner;
         private AudioManager audioManager;
 
         private GameObject mainPanel;
@@ -316,11 +317,11 @@ namespace AegisProtocol.UI
             briefingDetailsText.text =
                 $"★ {data.WeaponEvolutionTitle}\n" +
                 $"★ {data.SpecialPerkTitle}\n\n" +
-                "GÖREV HEDEFİ:\n" +
-                "• Ortadaki Kuantum Reaktörünü 5 kuşatma dalgası boyunca koru.\n" +
-                "• 3 Turuncu Uydu Terminalinin halkasında durarak sinyali %100 hackle.\n" +
-                "• 5. dalgadaki Overlord Titan Boss'u ve muhafızlarını yok et!\n\n" +
-                "KONTROLLER: WASD Hareket | Sol Tık Plazma | Sağ Tık Füze | Space Dash | Mavi Halkada [E] Kule Kur";
+                "NASIL KAZANIRSIN? (ÇOK BASİT):\n" +
+                "• 5 Dalgadaki tüm düşmanları temizle -> SEVİYEYİ KAZANIRSIN!\n" +
+                "• (Bonus) Turuncu Uydu Halkalarında durursan +75 Kristal, +150 Can ve +500 Puan kazanırsın!\n\n" +
+                "NASIL KAYBEDERSİN?:\n" +
+                "• Kendi Robotunun Canı (MECH HP) VEYA Ortadaki Mavi Reaktörün Canı (REAKTÖR HP) 0'a düşerse kaybedersin!";
         }
 
         private void BuildHowToPlay(Transform parent)
@@ -461,6 +462,7 @@ namespace AegisProtocol.UI
             buildManager = FindFirstObjectByType<TacticalBuildManager>();
             interactionScanner = FindFirstObjectByType<MechInteractionScanner>();
             upgradeManager = FindFirstObjectByType<RogueliteUpgradeManager>();
+            waveSpawner = FindFirstObjectByType<WaveSpawnerManager>();
             audioManager = AudioManager.Instance;
         }
 
@@ -468,7 +470,7 @@ namespace AegisProtocol.UI
         {
             if (gameManager == null || inputReader == null || mechHealth == null || reactorHealth == null ||
                 weaponSystem == null || resourceBank == null || buildManager == null || interactionScanner == null ||
-                upgradeManager == null || audioManager == null)
+                upgradeManager == null || waveSpawner == null || audioManager == null)
             {
                 ResolveSystems();
             }
@@ -479,15 +481,15 @@ namespace AegisProtocol.UI
             if (hudPanel == null || !hudPanel.activeSelf)
                 return;
 
-            SetHealthBar(mechHealth, mechHealthBar, mechHealthText, "MECH");
-            SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "REAKTÖR");
+            SetHealthBar(mechHealth, mechHealthBar, mechHealthText, "ROBOT CANI (MECH)");
+            SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "ÜS CANI (REAKTÖR)");
             if (gameManager != null)
             {
-                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5";
-                float targetTime = Mathf.Max(targetDurationSeconds, gameManager.ElapsedSeconds + gameManager.RemainingSeconds);
-                timerText.text = $"SÜRE {FormatTime(gameManager.ElapsedSeconds)} / {FormatTime(targetTime)}";
-                scoreText.text = $"SKOR {gameManager.TotalScore:N0}";
-                terminalText.text = $"UYDU {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
+                int remainingEnemies = waveSpawner != null ? waveSpawner.ActiveEnemyCount : 0;
+                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5 (5. Dalga Bitince Kazanırsın)";
+                timerText.text = $"KALAN DÜŞMAN: {remainingEnemies}   |   SÜRE: {FormatTime(gameManager.ElapsedSeconds)}";
+                scoreText.text = $"TOPLAM SKOR: {gameManager.TotalScore:N0}";
+                terminalText.text = $"BONUS UYDU: {gameManager.CompletedTerminals}/3 (+75 Kristal & +Can)";
             }
 
             if (weaponSystem != null)
@@ -516,9 +518,29 @@ namespace AegisProtocol.UI
             if (buildManager != null)
                 buildSelectionText.text = $"[1] LAZER 50   [2] EMP 75   [3] ONARIM 100   | SEÇİLİ: {buildManager.SelectedStructureType}";
             if (interactionScanner != null)
-                interactPromptText.text = string.IsNullOrEmpty(interactionScanner.CurrentPrompt)
-                    ? string.Empty
-                    : $"[E] {interactionScanner.CurrentPrompt}";
+            {
+                bool lowMech = mechHealth != null && mechHealth.HealthRatio < 0.38f;
+                bool lowReactor = reactorHealth != null && reactorHealth.HealthRatio < 0.38f;
+                if (!string.IsNullOrEmpty(interactionScanner.CurrentPrompt))
+                {
+                    interactPromptText.color = new Color(0.2f, 1f, 0.55f, 1f);
+                    interactPromptText.text = $"[E] {interactionScanner.CurrentPrompt}";
+                }
+                else if (lowMech)
+                {
+                    interactPromptText.color = new Color(1f, 0.35f, 0.25f, 1f);
+                    interactPromptText.text = "DİKKAT: ROBOT CANIN DÜŞÜK! Düşmanlardan Uzaklaş veya [3]+[E] ile Onarım Kulesi Kur!";
+                }
+                else if (lowReactor)
+                {
+                    interactPromptText.color = new Color(1f, 0.35f, 0.25f, 1f);
+                    interactPromptText.text = "DİKKAT: REAKTÖR CANI DÜŞÜK! Ortadaki Mavi Reaktörü Koru!";
+                }
+                else
+                {
+                    interactPromptText.text = string.Empty;
+                }
+            }
         }
 
         private void HandleGameStateChanged(GameStateChangedEvent change)
@@ -598,11 +620,17 @@ namespace AegisProtocol.UI
                     : "TÜM 5 SEKTÖR KURTARILDI: KUSURSUZ ZAFER!")
                 : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ";
             resultTitle.color = victory ? AccentColor : new Color(1f, 0.25f, 0.2f);
+            string reasonLine = victory
+                ? "BAŞARI NEDENİ: 5 Dalgadaki Tüm Düşmanlar Yok Edildi ve Reaktör Korundu!"
+                : (!string.IsNullOrEmpty(gameManager.FailureReason)
+                    ? gameManager.FailureReason
+                    : "KAYBETME NEDENİ: Robot veya Reaktör Canı Sıfırlandı!");
+
             resultDetails.text =
+                $"{reasonLine}\n\n" +
                 $"SEKTÖR: {gameManager.CurrentLevelData.SectorName}\n" +
-                $"TOPLAM SKOR: {gameManager.TotalScore:N0}\n" +
-                $"GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
-                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5   |   UYDU TERMİNALİ: {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
+                $"TOPLAM SKOR: {gameManager.TotalScore:N0}   |   GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
+                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5   |   BONUS UYDU: {gameManager.CompletedTerminals}/3";
         }
 
         private void ShowAuxiliaryPanel(GameObject panel)
