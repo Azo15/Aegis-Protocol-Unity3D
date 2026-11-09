@@ -35,8 +35,8 @@ namespace AegisProtocol.Systems
         public bool IsHackActivated => hackActivated;
 
         public string InteractionPrompt => isCompleted
-            ? $"{terminalId} - Signal restored"
-            : $"{terminalId} - Hack signal ({Mathf.RoundToInt(ProgressNormalized * 100f)}%)";
+            ? $"{terminalId} - Uydu Sinyali Tamamlandı (%100)"
+            : $"{terminalId} - Uydu Hackleniyor (%{Mathf.RoundToInt(ProgressNormalized * 100f)})";
 
         private void Awake()
         {

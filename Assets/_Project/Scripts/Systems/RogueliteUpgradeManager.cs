@@ -222,22 +222,22 @@ namespace AegisProtocol.Systems
             switch (type)
             {
                 case UpgradeModuleType.PlasmaCoolant:
-                    card.Configure(type, "Plasma Coolant", "Reduces weapon heat generation by 25%.", 0.25f);
+                    card.Configure(type, "Plazma Soğutucu (Plasma Coolant)", "Silah ısınmasını %25 azaltır, daha uzun süre ateş edersin.", 0.25f);
                     break;
                 case UpgradeModuleType.TitaniumArmor:
-                    card.Configure(type, "Titanium Armor", "Adds 40 maximum mech HP and fully repairs the mech.", 40f);
+                    card.Configure(type, "Titanyum Zırh (Titanium Armor)", "Mech'in maksimum canını +40 artırır ve canını tamamen doldurur.", 40f);
                     break;
                 case UpgradeModuleType.TurretOverclock:
-                    card.Configure(type, "Turret Overclock", "Increases all laser turret fire rate by 30%.", 1.3f);
+                    card.Configure(type, "Kule Hızlandırıcı (Turret Overclock)", "Kurduğun tüm Lazer Kulelerinin ateş hızını %30 artırır.", 1.3f);
                     break;
                 case UpgradeModuleType.MagneticPull:
-                    card.Configure(type, "Magnetic Pull", "Increases energy crystal pickup range by 50%.", 1.5f);
+                    card.Configure(type, "Manyetik Çekim (Magnetic Pull)", "Düşen enerji kristallerini %50 daha uzaktan otomatik çeker.", 1.5f);
                     break;
                 case UpgradeModuleType.OverchargedCapacitors:
-                    card.Configure(type, "Overcharged Capacitors", "Increases weapon damage by 20%.", 1.2f);
+                    card.Configure(type, "Yüksek Güçlü Kapasitör (Hasar +20%)", "Plazma topu ve füzelerin verdiği hasarı %20 artırır.", 1.2f);
                     break;
                 case UpgradeModuleType.ThrusterBoost:
-                    card.Configure(type, "Thruster Boost", "Increases mech movement speed by 15%.", 1.15f);
+                    card.Configure(type, "Turbo İticiler (Hız +15%)", "Mech'in yürüyüş ve manevra hızını %15 artırır.", 1.15f);
                     break;
             }
             return card;

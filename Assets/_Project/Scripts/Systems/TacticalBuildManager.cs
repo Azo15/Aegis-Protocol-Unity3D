@@ -128,10 +128,14 @@ namespace AegisProtocol.Systems
                 ? option.config.CrystalCost
                 : GetDefaultCost(selectedStructureType);
             CrystalResourceBank bank = CrystalResourceBank.Instance;
-            string structureName = selectedStructureType.ToString();
+            string structureName = selectedStructureType == DefenseStructureType.AutoLaserTurret
+                ? "Lazer Kulesi"
+                : selectedStructureType == DefenseStructureType.EmpSlowTower
+                    ? "EMP Yavaşlatma Kulesi"
+                    : "Onarım İstasyonu";
             return bank != null && bank.CurrentBalance >= cost
-                ? $"E - Build {structureName} ({cost} crystals)"
-                : $"{structureName} ({cost} crystals required)";
+                ? $"{structureName} Kur ({cost} Kristal)"
+                : $"{structureName} için {cost} Kristal Gerekli";
         }
 
         private DefenseBuildOption FindOption(DefenseStructureType type)
