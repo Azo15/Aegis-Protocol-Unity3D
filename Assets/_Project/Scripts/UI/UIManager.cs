@@ -32,6 +32,7 @@ namespace AegisProtocol.UI
         private RogueliteUpgradeManager upgradeManager;
         private WaveSpawnerManager waveSpawner;
         private AudioManager audioManager;
+        private IsometricCameraRig cameraRig;
 
         private GameObject mainPanel;
         private GameObject levelSelectPanel;
@@ -67,6 +68,8 @@ namespace AegisProtocol.UI
         private Text missileText;
         private Text dashText;
         private Text crystalText;
+        private Text cameraModeText;
+        private Text cockpitCrosshairText;
         private Text[] upgradeCardTexts = Array.Empty<Text>();
         private Slider mechHealthBar;
         private Slider reactorHealthBar;
@@ -340,15 +343,14 @@ namespace AegisProtocol.UI
             CreateText(content, "NASIL OYNANIR & PUAN TABLOSU", 34, AccentColor, 64f, FontStyle.Bold);
             CreateText(content,
                 "WASD: Mech hareketi | Fare: bağımsız kule nişanı\n" +
-                "Sol tık: seri plazma | Sağ tık: güdümlü AoE füze\n" +
-                "Space: dash | E: BuildNode / uydu terminali\n" +
-                "1: Lazer (50) | 2: EMP (75) | 3: Onarım (100)\n" +
-                "Esc/P: duraklat | F: taktik fener\n\n" +
+                "C veya V: Kamera Açısı Değiştir (3B TPS / Tank İçi Kokpit FPS / Kuşbakışı)\n" +
+                "Q / R veya Sol-Sağ Ok: Kamerayı 360° Döndür | Fare Tekerleği: Yakınlaştır\n" +
+                "Sol tık: seri mermi | Sağ tık: güdümlü füze | Space: dash\n" +
+                "1: Lazer (50) | 2: EMP (75) | 3: Onarım (100) | [E]: Kule Kur\n\n" +
                 "Scout Drone +50 | Ranged Striker +100\n" +
                 "Heavy Siege Mech +250 | Overlord Titan +1500\n" +
-                "Terminal hack +500 | Hasarsız dalga +300\n" +
-                "Son dalga Reaktör bonusu: kalan HP ×10",
-                22, Color.white, 360f, FontStyle.Normal);
+                "Terminal hack +500 | Hasarsız dalga +300",
+                21, Color.white, 380f, FontStyle.Normal);
             AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 58f);
         }
 
@@ -522,13 +524,34 @@ namespace AegisProtocol.UI
 
             Text guideBanner = CreateHudText(
                 parent,
-                "GÖREV: Ortadaki Mavi Reaktörü Koru! | WASD: Hareket | SOL TIK: Ateş | SAĞ TIK: Füze | Mavi Halkada [E]: Kule Kur | Turuncu Halkada Dur: Uydu Hackle",
+                "GÖREV: Ortadaki Kaleyi Koru! | [C] Kamera Açısı (Tank İçi Kokpit / 3B) | [Q/R veya Oklar] Açıyı Döndür | SOL TIK: Ateş | SAĞ TIK: Füze",
                 new Vector2(0f, -18f),
                 new Vector2(0.5f, 1f),
                 17,
                 TextAnchor.UpperCenter);
-            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(1180f, 48f);
+            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(1260f, 48f);
             guideBanner.color = new Color(0.75f, 0.96f, 1f, 0.95f);
+
+            cameraModeText = CreateHudText(
+                parent,
+                "[C] KAMERA: 3B YAKIN TAKİP (TPS)  |  [Q/R veya Ok Tuşları] Açıyı Döndür",
+                new Vector2(28f, -158f),
+                new Vector2(0f, 1f),
+                17,
+                TextAnchor.UpperLeft);
+            cameraModeText.GetComponent<RectTransform>().sizeDelta = new Vector2(680f, 34f);
+            cameraModeText.color = new Color(1f, 0.88f, 0.32f, 1f);
+
+            cockpitCrosshairText = CreateHudText(
+                parent,
+                "[   +   ]",
+                new Vector2(0f, 18f),
+                new Vector2(0.5f, 0.5f),
+                28,
+                TextAnchor.MiddleCenter);
+            cockpitCrosshairText.GetComponent<RectTransform>().sizeDelta = new Vector2(260f, 44f);
+            cockpitCrosshairText.color = new Color(0.15f, 1f, 0.55f, 0.92f);
+            cockpitCrosshairText.gameObject.SetActive(false);
         }
 
         private void ResolveSystems()
@@ -545,13 +568,14 @@ namespace AegisProtocol.UI
             upgradeManager = FindFirstObjectByType<RogueliteUpgradeManager>();
             waveSpawner = FindFirstObjectByType<WaveSpawnerManager>();
             audioManager = AudioManager.Instance;
+            cameraRig = FindFirstObjectByType<IsometricCameraRig>();
         }
 
         private void ResolveSystemsIfNeeded()
         {
             if (gameManager == null || inputReader == null || mechHealth == null || reactorHealth == null ||
                 weaponSystem == null || resourceBank == null || buildManager == null || interactionScanner == null ||
-                upgradeManager == null || waveSpawner == null || audioManager == null)
+                upgradeManager == null || waveSpawner == null || audioManager == null || cameraRig == null)
             {
                 ResolveSystems();
             }
@@ -563,7 +587,17 @@ namespace AegisProtocol.UI
                 return;
 
             SetHealthBar(mechHealth, mechHealthBar, mechHealthText, "ROBOT CANI (MECH)");
-            SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "ÜS CANI (REAKTÖR)");
+            SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "KALE CANI (REAKTÖR)");
+            if (cameraRig != null)
+            {
+                if (cameraModeText != null)
+                {
+                    cameraModeText.text =
+                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Q/R veya Oklar] 360° Döndür";
+                }
+                if (cockpitCrosshairText != null)
+                    cockpitCrosshairText.gameObject.SetActive(cameraRig.IsCockpitMode);
+            }
             if (gameManager != null)
             {
                 int remainingEnemies = waveSpawner != null ? waveSpawner.ActiveEnemyCount : 0;
