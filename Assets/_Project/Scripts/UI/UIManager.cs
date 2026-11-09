@@ -45,8 +45,12 @@ namespace AegisProtocol.UI
         private Transform canvasTransform;
         private Text briefingTitleText;
         private Text briefingDetailsText;
+        private Text resultBadgeText;
         private Text resultTitle;
         private Text resultDetails;
+        private GameObject resultUnlockBox;
+        private Text resultUnlockText;
+        private Image resultTopBannerImage;
         private GameObject nextLevelButtonObject;
         private Text nextLevelButtonText;
         private Button[] levelSelectButtons = Array.Empty<Button>();
@@ -289,11 +293,17 @@ namespace AegisProtocol.UI
                 return;
 
             gameManager.StartRun();
+            ReloadActiveScene();
+            UpdateBriefingTexts();
+        }
+
+        private void ReloadActiveScene()
+        {
             Scene scene = SceneManager.GetActiveScene();
-            if (scene.IsValid() && scene.buildIndex >= 0)
+            if (scene.IsValid() && !string.IsNullOrEmpty(scene.name))
+                SceneManager.LoadScene(scene.name);
+            else if (scene.IsValid() && scene.buildIndex >= 0)
                 SceneManager.LoadScene(scene.buildIndex);
-            else
-                UpdateBriefingTexts();
         }
 
         private void BuildBriefing(Transform parent)
@@ -384,14 +394,70 @@ namespace AegisProtocol.UI
 
         private void BuildResultScreen(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 920f, 820f);
-            resultTitle = CreateText(content, "GÖREV SONUCU", 38, AccentColor, 72f, FontStyle.Bold);
-            resultDetails = CreateText(content, string.Empty, 23, Color.white, 260f, FontStyle.Normal);
-            nextLevelButtonText = AddButton(content, "SONRAKİ SEVİYEYE GEÇ", AdvanceToNextLevel, 66f, 23);
+            Transform content = CreateVerticalContent(parent, 980f, 920f);
+
+            GameObject bannerObj = new GameObject("Celebration Top Banner", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            bannerObj.transform.SetParent(content, false);
+            LayoutElement bannerLayout = bannerObj.GetComponent<LayoutElement>();
+            bannerLayout.minHeight = 68f;
+            bannerLayout.preferredHeight = 68f;
+            resultTopBannerImage = bannerObj.GetComponent<Image>();
+            resultTopBannerImage.sprite = runtimeWhiteSprite;
+            resultTopBannerImage.color = new Color(0.85f, 0.62f, 0.08f, 0.95f);
+
+            GameObject badgeTextObj = new GameObject("Badge Text", typeof(RectTransform), typeof(Text));
+            badgeTextObj.transform.SetParent(bannerObj.transform, false);
+            Stretch(badgeTextObj.GetComponent<RectTransform>());
+            resultBadgeText = badgeTextObj.GetComponent<Text>();
+            resultBadgeText.font = runtimeFont;
+            resultBadgeText.fontSize = 26;
+            resultBadgeText.fontStyle = FontStyle.Bold;
+            resultBadgeText.color = new Color(0.05f, 0.08f, 0.12f, 1f);
+            resultBadgeText.alignment = TextAnchor.MiddleCenter;
+            resultBadgeText.text = "★ ★ ★   TEBRİKLER KOMUTAN — ZAFER MADALYASI   ★ ★ ★";
+
+            resultTitle = CreateText(content, "GÖREV SONUCU", 36, AccentColor, 58f, FontStyle.Bold);
+            resultDetails = CreateText(content, string.Empty, 21, Color.white, 175f, FontStyle.Normal);
+
+            resultUnlockBox = new GameObject("Unlock Reward Box", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            resultUnlockBox.transform.SetParent(content, false);
+            LayoutElement unlockLayout = resultUnlockBox.GetComponent<LayoutElement>();
+            unlockLayout.minHeight = 128f;
+            unlockLayout.preferredHeight = 128f;
+            Image unlockBg = resultUnlockBox.GetComponent<Image>();
+            unlockBg.sprite = runtimeWhiteSprite;
+            unlockBg.color = new Color(0.06f, 0.24f, 0.32f, 0.96f);
+
+            GameObject unlockTextObj = new GameObject("Unlock Text", typeof(RectTransform), typeof(Text));
+            unlockTextObj.transform.SetParent(resultUnlockBox.transform, false);
+            Stretch(unlockTextObj.GetComponent<RectTransform>());
+            resultUnlockText = unlockTextObj.GetComponent<Text>();
+            resultUnlockText.font = runtimeFont;
+            resultUnlockText.fontSize = 20;
+            resultUnlockText.fontStyle = FontStyle.Bold;
+            resultUnlockText.color = new Color(1f, 0.92f, 0.35f, 1f);
+            resultUnlockText.alignment = TextAnchor.MiddleCenter;
+            resultUnlockText.lineSpacing = 1.22f;
+
+            nextLevelButtonText = AddButton(content, "► SONRAKİ SEVİYEYE GEÇ", AdvanceToNextLevel, 64f, 23);
             nextLevelButtonObject = nextLevelButtonText.transform.parent.gameObject;
-            AddButton(content, "BU SEVİYEYİ TEKRAR OYNA", RestartCurrentScene, 58f);
-            AddButton(content, "SEVİYE SEÇİMİ", ShowLevelSelectPanel, 56f);
-            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 54f);
+            Image nextBtnImg = nextLevelButtonObject.GetComponent<Image>();
+            if (nextBtnImg != null)
+                nextBtnImg.color = new Color(0.08f, 0.48f, 0.26f, 1f);
+            Button nextBtn = nextLevelButtonObject.GetComponent<Button>();
+            if (nextBtn != null)
+            {
+                ColorBlock cb = nextBtn.colors;
+                cb.normalColor = new Color(0.08f, 0.48f, 0.26f, 1f);
+                cb.highlightedColor = new Color(0.14f, 0.68f, 0.36f, 1f);
+                cb.pressedColor = new Color(0.2f, 0.85f, 0.45f, 1f);
+                cb.selectedColor = cb.highlightedColor;
+                nextBtn.colors = cb;
+            }
+
+            AddButton(content, "BU SEVİYEYİ TEKRAR OYNA", RestartCurrentScene, 54f, 20);
+            AddButton(content, "SEVİYE & SEKTÖR SEÇİMİ", ShowLevelSelectPanel, 54f, 20);
+            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 50f, 20);
         }
 
         private void AdvanceToNextLevel()
@@ -608,29 +674,65 @@ namespace AegisProtocol.UI
             bool hasNext = victory && gameManager.HasNextLevel;
             if (nextLevelButtonObject != null)
                 nextLevelButtonObject.SetActive(hasNext);
-            if (hasNext && nextLevelButtonText != null)
+
+            if (resultTopBannerImage != null)
             {
-                SectorLevelData nextData = SectorLevelConfig.GetLevel(gameManager.CurrentLevel + 1);
-                nextLevelButtonText.text = $"SONRAKİ SEVİYEYE GEÇ ({nextData.SectorName})";
+                resultTopBannerImage.color = victory
+                    ? new Color(0.95f, 0.72f, 0.12f, 0.98f)
+                    : new Color(0.75f, 0.15f, 0.15f, 0.96f);
+            }
+
+            if (resultBadgeText != null)
+            {
+                resultBadgeText.color = victory ? new Color(0.06f, 0.08f, 0.12f, 1f) : Color.white;
+                resultBadgeText.text = victory
+                    ? $"★ ★ ★   TEBRİKLER KOMUTAN! SEVİYE {gameManager.CurrentLevel} ZAFERİ!   ★ ★ ★"
+                    : $"[ ! ]   SİSTEM UYARISI — SEVİYE {gameManager.CurrentLevel} SAVUNMASI DÜŞTÜ   [ ! ]";
+            }
+
+            if (resultUnlockBox != null)
+                resultUnlockBox.SetActive(victory);
+
+            if (victory && resultUnlockText != null)
+            {
+                if (hasNext)
+                {
+                    SectorLevelData nextData = SectorLevelConfig.GetLevel(gameManager.CurrentLevel + 1);
+                    if (nextLevelButtonText != null)
+                        nextLevelButtonText.text = $"► SONRAKİ SEVİYEYE GEÇ ({nextData.SectorName}) ◄";
+
+                    resultUnlockText.text =
+                        $"★ YENİ SEVİYE VE YENİ SİLAH EVRİMİ AÇILDI! ★\n" +
+                        $"► AÇILAN SEKTÖR: {nextData.SectorName} ({nextData.Subtitle})\n" +
+                        $"► YENİ {nextData.WeaponEvolutionTitle}\n" +
+                        $"► YENİ {nextData.SpecialPerkTitle}";
+                }
+                else
+                {
+                    resultUnlockText.text =
+                        "★ ★ ★   EFSANEVİ KOMUTAN MADALYASI KAZANILDI!   ★ ★ ★\n" +
+                        "Tüm 5 Sektörü ve Overlord Ana Üssünü Başarıyla Kurtardın!";
+                }
             }
 
             resultTitle.text = victory
                 ? (hasNext
-                    ? $"SEVİYE {gameManager.CurrentLevel} TAMAMLANDI! SEVİYE {gameManager.CurrentLevel + 1} AÇILDI!"
-                    : "TÜM 5 SEKTÖR KURTARILDI: KUSURSUZ ZAFER!")
-                : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ";
-            resultTitle.color = victory ? AccentColor : new Color(1f, 0.25f, 0.2f);
+                    ? $"♦ SEVİYE {gameManager.CurrentLevel} TAMAMLANDI  •  SEVİYE {gameManager.CurrentLevel + 1} KİLİDİ AÇILDI! ♦"
+                    : "★ TÜM 5 SEKTÖR KURTARILDI: KUSURSUZ ZAFER! ★")
+                : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ OLDU";
+            resultTitle.color = victory ? new Color(0.3f, 1f, 0.65f, 1f) : new Color(1f, 0.35f, 0.3f);
+
             string reasonLine = victory
-                ? "BAŞARI NEDENİ: 5 Dalgadaki Tüm Düşmanlar Yok Edildi ve Reaktör Korundu!"
+                ? "✓ BAŞARI RAPORU: 5 Dalgadaki Tüm Düşmanlar Yok Edildi ve Kuantum Reaktörü Korundu!"
                 : (!string.IsNullOrEmpty(gameManager.FailureReason)
                     ? gameManager.FailureReason
                     : "KAYBETME NEDENİ: Robot veya Reaktör Canı Sıfırlandı!");
 
             resultDetails.text =
                 $"{reasonLine}\n\n" +
-                $"SEKTÖR: {gameManager.CurrentLevelData.SectorName}\n" +
-                $"TOPLAM SKOR: {gameManager.TotalScore:N0}   |   GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
-                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5   |   BONUS UYDU: {gameManager.CompletedTerminals}/3";
+                $"★ TAMAMLANAN SEKTÖR: {gameManager.CurrentLevelData.SectorName}\n" +
+                $"★ TOPLAM SKOR: {gameManager.TotalScore:N0} PUAN   |   GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
+                $"★ SAVUNULAN DALGA: {gameManager.CompletedWaves}/5   |   BONUS UYDU HACK: {gameManager.CompletedTerminals}/3";
         }
 
         private void ShowAuxiliaryPanel(GameObject panel)
@@ -644,18 +746,14 @@ namespace AegisProtocol.UI
         {
             if (gameManager != null)
                 gameManager.StartRun();
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.IsValid() && scene.buildIndex >= 0)
-                SceneManager.LoadScene(scene.buildIndex);
+            ReloadActiveScene();
         }
 
         private void ReturnToMainMenu()
         {
             if (gameManager != null)
                 gameManager.ReturnToMainMenu();
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.IsValid() && scene.buildIndex >= 0)
-                SceneManager.LoadScene(scene.buildIndex);
+            ReloadActiveScene();
         }
 
         private GameObject CreatePanel(string name, Color color)
