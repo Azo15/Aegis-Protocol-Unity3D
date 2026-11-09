@@ -365,7 +365,20 @@ namespace AegisProtocol.UI
 
         private static void ToggleFullscreen()
         {
-            if (Screen.fullScreenMode == FullScreenMode.Windowed)
+#if UNITY_EDITOR
+            Type gameViewType = Type.GetType("UnityEditor.GameView,UnityEditor");
+            if (gameViewType != null)
+            {
+                UnityEditor.EditorWindow gameView = UnityEditor.EditorWindow.GetWindow(gameViewType);
+                if (gameView != null)
+                {
+                    gameView.maximized = !gameView.maximized;
+                    return;
+                }
+            }
+#endif
+            bool makeFullscreen = !Screen.fullScreen;
+            if (makeFullscreen)
             {
                 int width = Display.main != null ? Display.main.systemWidth : 1920;
                 int height = Display.main != null ? Display.main.systemHeight : 1080;
@@ -375,10 +388,12 @@ namespace AegisProtocol.UI
                     height = 1080;
                 }
                 Screen.SetResolution(width, height, FullScreenMode.FullScreenWindow);
+                Screen.fullScreen = true;
             }
             else
             {
                 Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
+                Screen.fullScreen = false;
             }
         }
 
