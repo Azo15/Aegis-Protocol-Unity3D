@@ -21,11 +21,15 @@ namespace AegisProtocol.Core
         [SerializeField] private HealthComponent mechHealth;
         [SerializeField] private HealthComponent reactorHealth;
 
+        private const string MaxUnlockedLevelPrefKey = "Aegis_MaxUnlockedLevel";
+
         private readonly HashSet<string> completedTerminalIds = new HashSet<string>(StringComparer.Ordinal);
         private HealthComponent subscribedMechHealth;
         private HealthComponent subscribedReactorHealth;
         private GameState state = GameState.MainMenu;
         private GameState stateBeforePause = GameState.MainMenu;
+        private int currentLevel = 1;
+        private int maxUnlockedLevel = 1;
         private int currentWave;
         private int completedWaves;
         private int totalScore;
@@ -38,6 +42,11 @@ namespace AegisProtocol.Core
         public event Action<GameStateSnapshot> OnSessionSnapshotChanged;
 
         public GameState CurrentState => state;
+        public int CurrentLevel => currentLevel;
+        public int MaxUnlockedLevel => maxUnlockedLevel;
+        public int TotalLevels => SectorLevelConfig.TotalLevels;
+        public SectorLevelData CurrentLevelData => SectorLevelConfig.GetLevel(currentLevel);
+        public bool HasNextLevel => currentLevel < SectorLevelConfig.TotalLevels;
         public int CurrentWave => currentWave;
         public int CompletedWaves => completedWaves;
         public int TotalWaves => totalWaves;
@@ -62,14 +71,28 @@ namespace AegisProtocol.Core
             DontDestroyOnLoad(gameObject);
             totalWaves = Mathf.Max(1, totalWaves);
             requiredTerminals = Mathf.Max(1, requiredTerminals);
+            maxUnlockedLevel = Mathf.Clamp(PlayerPrefs.GetInt(MaxUnlockedLevelPrefKey, 1), 1, SectorLevelConfig.TotalLevels);
+            currentLevel = Mathf.Clamp(currentLevel, 1, maxUnlockedLevel);
         }
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.F10))
+                UnlockAllLevels();
+
             if (state != GameState.WaveActive)
                 return;
 
             elapsedSeconds += Time.deltaTime;
+            float regen = CurrentLevelData.PassiveRegenPerSecond;
+            if (regen > 0f)
+            {
+                if (mechHealth != null && !mechHealth.IsDead)
+                    mechHealth.Heal(regen * Time.deltaTime);
+                if (reactorHealth != null && !reactorHealth.IsDead)
+                    reactorHealth.Heal(regen * 0.5f * Time.deltaTime);
+            }
+
             if (Time.unscaledTime >= nextSnapshotTime)
             {
                 nextSnapshotTime = Time.unscaledTime + 0.25f;
@@ -134,6 +157,37 @@ namespace AegisProtocol.Core
                     "(or explicit Inspector references) before it can evaluate mission endings.", this);
             }
 
+            PublishSnapshot();
+        }
+
+        public bool IsLevelUnlocked(int levelNumber)
+        {
+            return levelNumber >= 1 && levelNumber <= maxUnlockedLevel;
+        }
+
+        public bool SelectLevel(int levelNumber)
+        {
+            if (!IsLevelUnlocked(levelNumber))
+                return false;
+
+            currentLevel = Mathf.Clamp(levelNumber, 1, SectorLevelConfig.TotalLevels);
+            return true;
+        }
+
+        public void UnlockAllLevels()
+        {
+            maxUnlockedLevel = SectorLevelConfig.TotalLevels;
+            PlayerPrefs.SetInt(MaxUnlockedLevelPrefKey, maxUnlockedLevel);
+            PlayerPrefs.Save();
+            PublishSnapshot();
+        }
+
+        public void ResetLevelProgression()
+        {
+            maxUnlockedLevel = 1;
+            currentLevel = 1;
+            PlayerPrefs.SetInt(MaxUnlockedLevelPrefKey, 1);
+            PlayerPrefs.Save();
             PublishSnapshot();
         }
 
@@ -318,6 +372,13 @@ namespace AegisProtocol.Core
 
             if (!objectivesAlive || !missionComplete)
                 return false;
+
+            if (currentLevel >= maxUnlockedLevel && currentLevel < SectorLevelConfig.TotalLevels)
+            {
+                maxUnlockedLevel = Mathf.Min(SectorLevelConfig.TotalLevels, currentLevel + 1);
+                PlayerPrefs.SetInt(MaxUnlockedLevelPrefKey, maxUnlockedLevel);
+                PlayerPrefs.Save();
+            }
 
             SetState(GameState.Victory);
             return true;
