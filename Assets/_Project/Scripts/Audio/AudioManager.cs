@@ -31,6 +31,8 @@ namespace AegisProtocol.Audio
         [SerializeField, Range(0f, 1f)] private float sfxVolume = 0.8f;
 
         private readonly List<AudioClip> generatedClips = new List<AudioClip>();
+        private AudioClip[] levelShotClips = Array.Empty<AudioClip>();
+        private AudioClip[] levelExplosionClips = Array.Empty<AudioClip>();
         private AudioSource musicSource;
         private AudioSource sfxSource;
         private GameManager gameManager;
@@ -106,6 +108,17 @@ namespace AegisProtocol.Audio
         }
 
         public void PlayUiClick() => Play(uiClick);
+
+        public void PlayLevelExplosion(int levelTier, bool isMissile)
+        {
+            int idx = Mathf.Clamp(levelTier, 1, 5) - 1;
+            if (levelExplosionClips != null && idx < levelExplosionClips.Length && levelExplosionClips[idx] != null)
+            {
+                Play(levelExplosionClips[idx]);
+                return;
+            }
+            Play(isMissile ? missileLaunch : enemyDestroyed);
+        }
 
         public void Play(AudioClip clip)
         {
@@ -185,6 +198,13 @@ namespace AegisProtocol.Audio
 
         private void HandleWeaponFired(WeaponFireEvent fireEvent)
         {
+            int currentLevel = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : 1;
+            int idx = Mathf.Clamp(currentLevel, 1, 5) - 1;
+            if (!fireEvent.IsMissile && levelShotClips != null && idx < levelShotClips.Length && levelShotClips[idx] != null)
+            {
+                Play(levelShotClips[idx]);
+                return;
+            }
             Play(fireEvent.IsMissile ? missileLaunch : plasmaShot);
         }
 
@@ -238,6 +258,24 @@ namespace AegisProtocol.Audio
                 victoryJingle = CreateSynthClip("Victory Jingle", 1.25f, 440f, 880f, 0.3f, false);
             if (defeatJingle == null)
                 defeatJingle = CreateSynthClip("Defeat Jingle", 1.1f, 220f, 82f, 0.3f, false);
+
+            levelShotClips = new[]
+            {
+                CreateSynthClip("Shot L1", 0.18f, 820f, 240f, 0.30f, false),
+                CreateSynthClip("Shot L2 Twin", 0.22f, 680f, 190f, 0.34f, false),
+                CreateSynthClip("Shot L3 Triple", 0.25f, 920f, 160f, 0.36f, false),
+                CreateSynthClip("Shot L4 Quad", 0.28f, 540f, 110f, 0.38f, false),
+                CreateSynthClip("Shot L5 Omega", 0.34f, 480f, 85f, 0.42f, false)
+            };
+
+            levelExplosionClips = new[]
+            {
+                CreateSynthClip("Explosion L1", 0.24f, 260f, 70f, 0.28f, false),
+                CreateSynthClip("Explosion L2", 0.30f, 220f, 58f, 0.33f, false),
+                CreateSynthClip("Explosion L3", 0.36f, 310f, 50f, 0.36f, false),
+                CreateSynthClip("Explosion L4", 0.44f, 180f, 40f, 0.40f, false),
+                CreateSynthClip("Explosion L5 Omega", 0.55f, 150f, 32f, 0.45f, false)
+            };
         }
 
         private AudioClip CreateSynthClip(

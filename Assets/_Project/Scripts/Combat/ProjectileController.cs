@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using AegisProtocol.Audio;
 using AegisProtocol.Core;
 
 namespace AegisProtocol.Combat
@@ -19,9 +20,12 @@ namespace AegisProtocol.Combat
         public GameObject Instigator;
         public HealthRole InstigatorRole;
         public GameObject ImpactEffectPrefab;
+        public int LevelTier;
+        public Color ProjectileColor;
+        public Color ExplosionColor;
     }
 
-    /// <summary>Moves a plasma bolt or guided missile and applies its impact damage.</summary>
+    /// <summary>Moves a plasma bolt or guided missile and applies its level-scaled impact and explosion.</summary>
     [DisallowMultipleComponent]
     public sealed class ProjectileController : MonoBehaviour
     {
@@ -46,7 +50,13 @@ namespace AegisProtocol.Combat
         private Collider[] overlapBuffer = new Collider[InitialOverlapCapacity];
         private Collider[] targetSearchBuffer = new Collider[InitialOverlapCapacity];
         private readonly HashSet<HealthComponent> damagedTargets = new HashSet<HealthComponent>();
+        private Material runtimeVisualMaterial;
+        private Material runtimeTrailMaterial;
         private float lifetimeRemaining;
+        private int levelTier = 1;
+        private Color projectileColor = new Color(0.2f, 0.95f, 1f);
+        private Color explosionColor = new Color(0.2f, 0.85f, 1f);
+        private bool isInitialized;
         private bool hasImpacted;
 
         public bool IsMissile => isMissile;
@@ -58,6 +68,14 @@ namespace AegisProtocol.Combat
         {
             EnsurePhysicsComponents();
             lifetimeRemaining = Mathf.Max(0.01f, maxLifetime);
+        }
+
+        private void OnDestroy()
+        {
+            if (runtimeVisualMaterial != null)
+                Destroy(runtimeVisualMaterial);
+            if (runtimeTrailMaterial != null)
+                Destroy(runtimeTrailMaterial);
         }
 
         private void Update()
@@ -86,11 +104,21 @@ namespace AegisProtocol.Combat
 
         private void OnTriggerEnter(Collider other)
         {
-            if (hasImpacted || other == null || IsOwnedByInstigator(other.transform))
+            if (!isInitialized || hasImpacted || other == null || IsOwnedByInstigator(other.transform))
+                return;
+
+            string otherName = other.gameObject.name;
+            if (otherName == "Foundation" || otherName.Contains("Grid") || otherName.Contains("Socket"))
                 return;
 
             HealthComponent health = other.GetComponentInParent<HealthComponent>();
+            if (other.isTrigger && health == null)
+                return;
+
             if (health != null && !CanDamage(health))
+                return;
+
+            if (other.GetComponentInParent<ProjectileController>() != null)
                 return;
 
             Impact(other.ClosestPoint(transform.position), health);
@@ -111,9 +139,19 @@ namespace AegisProtocol.Combat
             instigator = settings.Instigator;
             instigatorRole = settings.InstigatorRole;
             impactEffectPrefab = settings.ImpactEffectPrefab;
+            levelTier = Mathf.Clamp(settings.LevelTier <= 0 ? 1 : settings.LevelTier, 1, 5);
+            projectileColor = settings.ProjectileColor.a > 0.01f
+                ? settings.ProjectileColor
+                : new Color(0.2f, 0.95f, 1f, 1f);
+            explosionColor = settings.ExplosionColor.a > 0.01f
+                ? settings.ExplosionColor
+                : projectileColor;
             lifetimeRemaining = maxLifetime;
             hasImpacted = false;
             EnsurePhysicsComponents();
+            if (instigatorRole == HealthRole.PlayerMech)
+                ApplyPlayerProjectileVisuals();
+            isInitialized = true;
         }
 
         private void EnsurePhysicsComponents()
@@ -122,6 +160,8 @@ namespace AegisProtocol.Combat
             if (projectileCollider == null)
                 projectileCollider = gameObject.AddComponent<SphereCollider>();
             projectileCollider.isTrigger = true;
+            if (projectileCollider is SphereCollider sc)
+                sc.radius = 0.55f;
 
             body = GetComponent<Rigidbody>();
             if (body == null)
@@ -132,6 +172,81 @@ namespace AegisProtocol.Combat
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         }
 
+        private void ApplyPlayerProjectileVisuals()
+        {
+            float widthScale = isMissile
+                ? 0.52f + levelTier * 0.08f
+                : 0.40f + levelTier * 0.07f;
+            float lengthScale = isMissile
+                ? 1.15f + levelTier * 0.18f
+                : 0.95f + levelTier * 0.22f;
+            transform.localScale = new Vector3(widthScale, widthScale, lengthScale);
+
+            Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            if (litShader != null)
+            {
+                runtimeVisualMaterial = new Material(litShader)
+                {
+                    color = projectileColor
+                };
+                if (runtimeVisualMaterial.HasProperty("_EmissionColor"))
+                {
+                    runtimeVisualMaterial.EnableKeyword("_EMISSION");
+                    runtimeVisualMaterial.SetColor("_EmissionColor", projectileColor * (1.8f + levelTier * 0.35f));
+                }
+
+                Renderer renderer = GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = true;
+                    renderer.sharedMaterial = runtimeVisualMaterial;
+                }
+
+                if (levelTier >= 3)
+                {
+                    PrimitiveType finType = levelTier >= 4 ? PrimitiveType.Cube : PrimitiveType.Sphere;
+                    GameObject core = GameObject.CreatePrimitive(finType);
+                    core.name = "Evolution Fin";
+                    core.transform.SetParent(transform, false);
+                    core.transform.localPosition = Vector3.zero;
+                    core.transform.localScale = new Vector3(1.55f, 0.35f, 0.65f);
+                    Collider finCollider = core.GetComponent<Collider>();
+                    if (finCollider != null)
+                        finCollider.enabled = false;
+                    Renderer finRenderer = core.GetComponent<Renderer>();
+                    if (finRenderer != null)
+                        finRenderer.sharedMaterial = runtimeVisualMaterial;
+                }
+            }
+
+            TrailRenderer trail = GetComponent<TrailRenderer>();
+            if (trail == null)
+                trail = gameObject.AddComponent<TrailRenderer>();
+            trail.time = isMissile ? 0.26f : 0.16f;
+            trail.startWidth = widthScale * 0.85f;
+            trail.endWidth = 0.04f;
+            trail.minVertexDistance = 0.05f;
+            Shader trailShader = Shader.Find("Sprites/Default") ?? litShader;
+            if (trailShader != null)
+            {
+                runtimeTrailMaterial = new Material(trailShader)
+                {
+                    color = projectileColor
+                };
+                trail.sharedMaterial = runtimeTrailMaterial;
+            }
+            trail.startColor = projectileColor;
+            trail.endColor = new Color(projectileColor.r, projectileColor.g, projectileColor.b, 0f);
+
+            Light glow = GetComponent<Light>();
+            if (glow == null)
+                glow = gameObject.AddComponent<Light>();
+            glow.type = LightType.Point;
+            glow.color = projectileColor;
+            glow.intensity = 2.4f + levelTier * 0.45f;
+            glow.range = 4.2f + levelTier * 0.8f;
+        }
+
         private void UpdateMissileHeading(float deltaTime)
         {
             if (target == null || !IsValidTarget(target))
@@ -139,6 +254,7 @@ namespace AegisProtocol.Combat
 
             Vector3 aimPoint = target != null ? target.position : targetPoint;
             Vector3 direction = aimPoint - transform.position;
+            direction.y = 0f;
             if (direction.sqrMagnitude <= 0.0001f)
                 return;
 
@@ -184,12 +300,24 @@ namespace AegisProtocol.Combat
                 return;
 
             hasImpacted = true;
-            if (isMissile)
+            if (isMissile || (instigatorRole == HealthRole.PlayerMech && explosionRadius >= 0.8f))
+            {
                 ApplyAreaDamage(impactPoint);
+                if (directTarget != null && CanDamage(directTarget) && damagedTargets.Add(directTarget))
+                    directTarget.TakeDamage(damage, instigator);
+            }
             else if (directTarget != null && CanDamage(directTarget))
+            {
                 directTarget.TakeDamage(damage, instigator);
+            }
 
-            if (impactEffectPrefab != null)
+            if (instigatorRole == HealthRole.PlayerMech)
+            {
+                SpawnLevelExplosionEffect(impactPoint);
+                if (directTarget != null || isMissile)
+                    AudioManager.Instance?.PlayLevelExplosion(levelTier, isMissile);
+            }
+            else if (impactEffectPrefab != null)
             {
                 GameObject effect = Instantiate(impactEffectPrefab, impactPoint, Quaternion.identity);
                 TimedEffectDestroyer cleaner = effect.GetComponent<TimedEffectDestroyer>();
@@ -199,6 +327,87 @@ namespace AegisProtocol.Combat
             }
 
             Destroy(gameObject);
+        }
+
+        private void SpawnLevelExplosionEffect(Vector3 center)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            Material expMat = shader != null ? new Material(shader) : null;
+            if (expMat != null)
+            {
+                expMat.color = explosionColor;
+                if (expMat.HasProperty("_EmissionColor"))
+                {
+                    expMat.EnableKeyword("_EMISSION");
+                    expMat.SetColor("_EmissionColor", explosionColor * (2.2f + levelTier * 0.5f));
+                }
+            }
+
+            PrimitiveType burstShape = levelTier == 2 || levelTier == 4
+                ? PrimitiveType.Cube
+                : PrimitiveType.Sphere;
+            GameObject blast = GameObject.CreatePrimitive(burstShape);
+            blast.name = $"Level_{levelTier}_Explosion";
+            blast.transform.position = new Vector3(center.x, 1.0f, center.z);
+            blast.transform.rotation = Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f);
+            Collider blastCollider = blast.GetComponent<Collider>();
+            if (blastCollider != null)
+                blastCollider.enabled = false;
+            Renderer blastRenderer = blast.GetComponent<Renderer>();
+            if (blastRenderer != null && expMat != null)
+                blastRenderer.sharedMaterial = expMat;
+
+            if (levelTier >= 2)
+            {
+                GameObject shockRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                shockRing.name = "Shockwave Ring";
+                shockRing.transform.SetParent(blast.transform, false);
+                shockRing.transform.localPosition = Vector3.zero;
+                shockRing.transform.localScale = new Vector3(1.8f, 0.08f, 1.8f);
+                Collider ringCollider = shockRing.GetComponent<Collider>();
+                if (ringCollider != null)
+                    ringCollider.enabled = false;
+                Renderer ringRenderer = shockRing.GetComponent<Renderer>();
+                if (ringRenderer != null && expMat != null)
+                    ringRenderer.sharedMaterial = expMat;
+            }
+
+            if (levelTier >= 4)
+            {
+                GameObject crossRing = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                crossRing.name = "Star Shock";
+                crossRing.transform.SetParent(blast.transform, false);
+                crossRing.transform.localPosition = Vector3.zero;
+                crossRing.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
+                crossRing.transform.localScale = new Vector3(1.6f, 0.25f, 1.6f);
+                Collider crossCollider = crossRing.GetComponent<Collider>();
+                if (crossCollider != null)
+                    crossCollider.enabled = false;
+                Renderer crossRenderer = crossRing.GetComponent<Renderer>();
+                if (crossRenderer != null && expMat != null)
+                    crossRenderer.sharedMaterial = expMat;
+            }
+
+            Light blastLight = blast.AddComponent<Light>();
+            blastLight.type = LightType.Point;
+            blastLight.color = explosionColor;
+            blastLight.intensity = (isMissile ? 5.5f : 3.2f) + levelTier * 0.8f;
+            blastLight.range = (isMissile ? 7.5f : 4.5f) + levelTier * 1.4f;
+
+            float targetDiameter = isMissile
+                ? (2.4f + levelTier * 0.9f)
+                : (1.1f + levelTier * 0.55f);
+            float duration = isMissile
+                ? (0.28f + levelTier * 0.04f)
+                : (0.18f + levelTier * 0.03f);
+
+            TimedEffectDestroyer expander = blast.AddComponent<TimedEffectDestroyer>();
+            expander.InitializeExpandingExplosion(
+                duration,
+                Vector3.one * 0.35f,
+                new Vector3(targetDiameter, targetDiameter * 0.65f, targetDiameter),
+                blastLight,
+                expMat);
         }
 
         private void ApplyAreaDamage(Vector3 center)

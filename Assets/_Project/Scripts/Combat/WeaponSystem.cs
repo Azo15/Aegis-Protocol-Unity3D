@@ -36,7 +36,11 @@ namespace AegisProtocol.Combat
         private float coolingMultiplier = 1f;
         private int primaryProjectileCount = 1;
         private float primarySpreadAngle = 0f;
+        private float primaryExplosionRadius = 1.1f;
         private int missileSalvoCount = 1;
+        private int configuredLevelNumber = 0;
+        private Color levelProjectileColor = new Color(0.2f, 0.95f, 1f);
+        private Color levelExplosionColor = new Color(0.2f, 0.85f, 1f);
         private bool isOverheated;
 
         public event Action<WeaponFireEvent> OnWeaponFired;
@@ -105,11 +109,22 @@ namespace AegisProtocol.Combat
         /// <summary>Applies the active campaign sector's weapon evolution and cooling bonuses.</summary>
         public void ConfigureLevelLoadout(SectorLevelData levelData)
         {
+            configuredLevelNumber = Mathf.Clamp(levelData.LevelNumber, 1, 5);
             primaryProjectileCount = Mathf.Clamp(levelData.PrimaryProjectileCount, 1, 7);
             primarySpreadAngle = Mathf.Clamp(levelData.PrimarySpreadAngle, 0f, 60f);
-            missileSalvoCount = Mathf.Clamp(levelData.MissileSalvoCount, 1, 5);
+            primaryExplosionRadius = Mathf.Max(0.5f, levelData.PrimaryExplosionRadius);
+            missileSalvoCount = Mathf.Clamp(levelData.MissileSalvoCount, 1, 6);
             damageMultiplier = Mathf.Max(0.5f, levelData.WeaponDamageMultiplier);
             coolingMultiplier = Mathf.Max(0.5f, levelData.CoolingMultiplier);
+            levelProjectileColor = levelData.ProjectileColor;
+            levelExplosionColor = levelData.ExplosionColor;
+        }
+
+        private void SyncLevelLoadoutIfNeeded()
+        {
+            GameManager manager = GameManager.Instance;
+            if (manager != null && manager.CurrentLevel != configuredLevelNumber)
+                ConfigureLevelLoadout(manager.CurrentLevelData);
         }
 
         /// <summary>Applies a cumulative positive heat-generation upgrade.</summary>
@@ -135,6 +150,7 @@ namespace AegisProtocol.Combat
 
         private bool TryFirePrimary()
         {
+            SyncLevelLoadoutIfNeeded();
             float shotInterval = 1f / (weaponConfig.PrimaryFireRate * fireRateMultiplier);
             if (isOverheated || Time.time - lastShotTime < shotInterval || plasmaProjectilePrefab == null)
                 return false;
@@ -145,13 +161,14 @@ namespace AegisProtocol.Combat
             Vector3 muzzleOrigin = GetMuzzlePosition();
             Vector3 right = Vector3.Cross(Vector3.up, baseDirection).normalized;
             int count = Mathf.Max(1, primaryProjectileCount);
+            int activeTier = Mathf.Clamp(configuredLevelNumber <= 0 ? 1 : configuredLevelNumber, 1, 5);
 
             for (int i = 0; i < count; i++)
             {
                 float centeredIndex = count == 1 ? 0f : (i / (float)(count - 1)) - 0.5f;
                 float yawAngle = centeredIndex * primarySpreadAngle;
                 Vector3 shotDirection = Quaternion.AngleAxis(yawAngle, Vector3.up) * baseDirection;
-                Vector3 lateralOffset = right * (centeredIndex * Mathf.Min(0.9f, (count - 1) * 0.32f));
+                Vector3 lateralOffset = right * (centeredIndex * Mathf.Min(1.3f, (count - 1) * 0.48f));
                 Vector3 spawnPos = muzzleOrigin + lateralOffset;
 
                 ProjectileController projectile = Instantiate(
@@ -164,11 +181,15 @@ namespace AegisProtocol.Combat
                     IsMissile = false,
                     Damage = weaponConfig.PrimaryDamage * damageMultiplier,
                     Speed = weaponConfig.PrimaryProjectileSpeed,
+                    ExplosionRadius = primaryExplosionRadius,
                     MaxLifetime = weaponConfig.PrimaryLifetime,
                     TargetPoint = mechController.AimWorldPoint,
                     Instigator = gameObject,
                     InstigatorRole = HealthRole.PlayerMech,
-                    ImpactEffectPrefab = impactEffectPrefab
+                    ImpactEffectPrefab = impactEffectPrefab,
+                    LevelTier = activeTier,
+                    ProjectileColor = levelProjectileColor,
+                    ExplosionColor = levelExplosionColor
                 });
             }
 
@@ -184,6 +205,7 @@ namespace AegisProtocol.Combat
 
         private bool TryFireMissile()
         {
+            SyncLevelLoadoutIfNeeded();
             if (isOverheated || missileCooldownRemaining > 0f || missileProjectilePrefab == null)
                 return false;
 
@@ -198,11 +220,12 @@ namespace AegisProtocol.Combat
 
             Vector3 right = Vector3.Cross(Vector3.up, direction).normalized;
             int salvo = Mathf.Max(1, missileSalvoCount);
+            int activeTier = Mathf.Clamp(configuredLevelNumber <= 0 ? 1 : configuredLevelNumber, 1, 5);
             for (int i = 0; i < salvo; i++)
             {
                 float centered = salvo == 1 ? 0f : (i / (float)(salvo - 1)) - 0.5f;
-                Vector3 missileDir = Quaternion.AngleAxis(centered * 14f, Vector3.up) * direction;
-                Vector3 spawnPos = muzzleOrigin + right * (centered * 0.65f);
+                Vector3 missileDir = Quaternion.AngleAxis(centered * 16f, Vector3.up) * direction;
+                Vector3 spawnPos = muzzleOrigin + right * (centered * 0.75f);
 
                 ProjectileController projectile = Instantiate(
                     missileProjectilePrefab,
@@ -215,13 +238,16 @@ namespace AegisProtocol.Combat
                     Damage = weaponConfig.MissileDamage * damageMultiplier,
                     Speed = weaponConfig.MissileSpeed,
                     TurnSpeed = weaponConfig.MissileTurnSpeed,
-                    ExplosionRadius = weaponConfig.MissileExplosionRadius,
+                    ExplosionRadius = weaponConfig.MissileExplosionRadius + activeTier * 0.55f,
                     MaxLifetime = weaponConfig.MissileLifetime,
                     TargetSearchRadius = MissileTargetSearchRadius,
                     TargetPoint = mechController.AimWorldPoint,
                     Instigator = gameObject,
                     InstigatorRole = HealthRole.PlayerMech,
-                    ImpactEffectPrefab = impactEffectPrefab
+                    ImpactEffectPrefab = impactEffectPrefab,
+                    LevelTier = activeTier,
+                    ProjectileColor = levelExplosionColor,
+                    ExplosionColor = levelExplosionColor
                 });
             }
 
@@ -299,17 +325,43 @@ namespace AegisProtocol.Combat
 
         private void SpawnMuzzleFlash(Vector3 direction)
         {
-            if (muzzleFlashPrefab == null)
+            if (muzzleFlashPrefab != null)
+            {
+                GameObject flash = Instantiate(
+                    muzzleFlashPrefab,
+                    GetMuzzlePosition(),
+                    Quaternion.LookRotation(direction, Vector3.up));
+                TimedEffectDestroyer cleaner = flash.GetComponent<TimedEffectDestroyer>();
+                if (cleaner == null)
+                    cleaner = flash.AddComponent<TimedEffectDestroyer>();
+                cleaner.Initialize(0.2f);
                 return;
+            }
 
-            GameObject flash = Instantiate(
-                muzzleFlashPrefab,
-                GetMuzzlePosition(),
-                Quaternion.LookRotation(direction, Vector3.up));
-            TimedEffectDestroyer cleaner = flash.GetComponent<TimedEffectDestroyer>();
-            if (cleaner == null)
-                cleaner = flash.AddComponent<TimedEffectDestroyer>();
-            cleaner.Initialize(0.2f);
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            Material flashMat = shader != null ? new Material(shader) : null;
+            if (flashMat != null)
+            {
+                flashMat.color = levelProjectileColor;
+                if (flashMat.HasProperty("_EmissionColor"))
+                {
+                    flashMat.EnableKeyword("_EMISSION");
+                    flashMat.SetColor("_EmissionColor", levelProjectileColor * 2.5f);
+                }
+            }
+
+            GameObject runtimeFlash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            runtimeFlash.name = "Muzzle Flash Burst";
+            runtimeFlash.transform.position = GetMuzzlePosition();
+            Collider flashCollider = runtimeFlash.GetComponent<Collider>();
+            if (flashCollider != null)
+                flashCollider.enabled = false;
+            Renderer flashRenderer = runtimeFlash.GetComponent<Renderer>();
+            if (flashRenderer != null && flashMat != null)
+                flashRenderer.sharedMaterial = flashMat;
+
+            TimedEffectDestroyer expander = runtimeFlash.AddComponent<TimedEffectDestroyer>();
+            expander.InitializeExpandingExplosion(0.09f, Vector3.one * 0.65f, Vector3.one * 0.1f, null, flashMat);
         }
 
         private Vector3 GetAimDirection()
