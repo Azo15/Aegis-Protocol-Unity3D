@@ -16,8 +16,8 @@ namespace AegisProtocol.Core
         [SerializeField] private float yawAngle = 45f;
         [SerializeField, Min(1f)] private float followDistance = 18f;
         [SerializeField, Min(0f)] private float targetHeightOffset = 1.2f;
-        [SerializeField, Min(0f)] private float aimLeadOffset = 2.25f;
-        [SerializeField, Min(0.01f)] private float smoothTime = 0.16f;
+        [SerializeField, Min(0f)] private float aimLeadOffset = 0f;
+        [SerializeField, Min(0.01f)] private float smoothTime = 0.08f;
         [SerializeField] private bool useOrthographicProjection = true;
         [SerializeField, Min(1f)] private float orthographicSize = 12f;
 
@@ -75,6 +75,9 @@ namespace AegisProtocol.Core
 
         private void LateUpdate()
         {
+            if (controlledCamera != null)
+                controlledCamera.rect = new Rect(0f, 0f, 1f, 1f);
+
             if (target == null)
                 return;
 

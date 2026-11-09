@@ -59,8 +59,21 @@ namespace AegisProtocol.Combat
                 return;
             }
 
-            body.constraints |= RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            body.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
             body.interpolation = RigidbodyInterpolation.Interpolate;
+            Collider mechCollider = GetComponent<Collider>();
+            if (mechCollider != null)
+            {
+                PhysicsMaterial smoothMaterial = new PhysicsMaterial("MechSmoothPhysics")
+                {
+                    dynamicFriction = 0f,
+                    staticFriction = 0f,
+                    bounciness = 0f,
+                    frictionCombine = PhysicsMaterialCombine.Minimum,
+                    bounceCombine = PhysicsMaterialCombine.Minimum
+                };
+                mechCollider.material = smoothMaterial;
+            }
             health.Configure(HealthRole.PlayerMech, DefaultPlayerMaxHealth, refillCurrentHealth: true);
 
             if (chassisTransform == null)
@@ -88,6 +101,10 @@ namespace AegisProtocol.Combat
                 return;
 
             PlayerInputSnapshot input = inputReader.CurrentSnapshot;
+            Vector3 moveDirection = new Vector3(input.MoveVector.x, 0f, input.MoveVector.y);
+            if (moveDirection.sqrMagnitude > 0.0001f)
+                RotateChassis(moveDirection.normalized, Time.deltaTime);
+
             UpdateAim(input.PointerScreenPosition);
 
             if (input.DashPressed)
@@ -96,13 +113,11 @@ namespace AegisProtocol.Combat
 
         private void FixedUpdate()
         {
+            body.angularVelocity = Vector3.zero;
             if (!CanControlMech())
             {
                 currentVelocity = Vector3.zero;
-                Vector3 stoppedVelocity = body.linearVelocity;
-                stoppedVelocity.x = 0f;
-                stoppedVelocity.z = 0f;
-                body.linearVelocity = stoppedVelocity;
+                body.linearVelocity = Vector3.zero;
                 return;
             }
 
@@ -112,10 +127,7 @@ namespace AegisProtocol.Combat
                 Vector3 dashVelocity = ConstrainVelocityToArena(
                     dashDirection * movementConfig.DashSpeed,
                     fixedDeltaTime);
-                Vector3 bodyVelocity = body.linearVelocity;
-                bodyVelocity.x = dashVelocity.x;
-                bodyVelocity.z = dashVelocity.z;
-                body.linearVelocity = bodyVelocity;
+                body.linearVelocity = new Vector3(dashVelocity.x, 0f, dashVelocity.z);
                 currentVelocity = dashVelocity;
 
                 dashTimeRemaining -= fixedDeltaTime;
@@ -140,13 +152,7 @@ namespace AegisProtocol.Combat
             currentVelocity = Vector3.MoveTowards(currentVelocity, targetVelocity, rate * fixedDeltaTime);
 
             currentVelocity = ConstrainVelocityToArena(currentVelocity, fixedDeltaTime);
-            if (moveDirection.sqrMagnitude > 0.0001f)
-                RotateChassis(moveDirection, fixedDeltaTime);
-
-            Vector3 horizontalVelocity = body.linearVelocity;
-            horizontalVelocity.x = currentVelocity.x;
-            horizontalVelocity.z = currentVelocity.z;
-            body.linearVelocity = horizontalVelocity;
+            body.linearVelocity = new Vector3(currentVelocity.x, 0f, currentVelocity.z);
         }
 
         private void OnDestroy()
