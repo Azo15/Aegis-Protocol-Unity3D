@@ -37,6 +37,14 @@ namespace AegisProtocol.Systems
                 Instance = null;
         }
 
+        public void ConfigureStartingBalance(int balance, float pickupMultiplier = 1f)
+        {
+            startingBalance = Mathf.Max(0, balance);
+            currentBalance = startingBalance;
+            pickupRadiusMultiplier = Mathf.Clamp(pickupMultiplier, 0.1f, 10f);
+            OnCrystalBalanceChanged?.Invoke(currentBalance, 0);
+        }
+
         public bool TrySpendCrystals(int amount)
         {
             if (amount < 0 || currentBalance < amount)

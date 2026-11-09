@@ -33,6 +33,10 @@ namespace AegisProtocol.Combat
         private float heatGenerationMultiplier = 1f;
         private float fireRateMultiplier = 1f;
         private float damageMultiplier = 1f;
+        private float coolingMultiplier = 1f;
+        private int primaryProjectileCount = 1;
+        private float primarySpreadAngle = 0f;
+        private int missileSalvoCount = 1;
         private bool isOverheated;
 
         public event Action<WeaponFireEvent> OnWeaponFired;
@@ -98,6 +102,16 @@ namespace AegisProtocol.Combat
                 cameraRig = runtimeCamera;
         }
 
+        /// <summary>Applies the active campaign sector's weapon evolution and cooling bonuses.</summary>
+        public void ConfigureLevelLoadout(SectorLevelData levelData)
+        {
+            primaryProjectileCount = Mathf.Clamp(levelData.PrimaryProjectileCount, 1, 7);
+            primarySpreadAngle = Mathf.Clamp(levelData.PrimarySpreadAngle, 0f, 60f);
+            missileSalvoCount = Mathf.Clamp(levelData.MissileSalvoCount, 1, 5);
+            damageMultiplier = Mathf.Max(0.5f, levelData.WeaponDamageMultiplier);
+            coolingMultiplier = Mathf.Max(0.5f, levelData.CoolingMultiplier);
+        }
+
         /// <summary>Applies a cumulative positive heat-generation upgrade.</summary>
         public void ApplyHeatGenerationMultiplier(float multiplier)
         {
@@ -127,29 +141,42 @@ namespace AegisProtocol.Combat
 
             float heatAfterShot = currentHeat + weaponConfig.PrimaryHeatPerShot * heatGenerationMultiplier;
 
-            Vector3 direction = GetAimDirection();
-            ProjectileController projectile = Instantiate(
-                plasmaProjectilePrefab,
-                GetMuzzlePosition(),
-                Quaternion.LookRotation(direction, Vector3.up));
-            projectile.gameObject.SetActive(true);
-            projectile.Initialize(new ProjectileLaunchSettings
+            Vector3 baseDirection = GetAimDirection();
+            Vector3 muzzleOrigin = GetMuzzlePosition();
+            Vector3 right = Vector3.Cross(Vector3.up, baseDirection).normalized;
+            int count = Mathf.Max(1, primaryProjectileCount);
+
+            for (int i = 0; i < count; i++)
             {
-                IsMissile = false,
-                Damage = weaponConfig.PrimaryDamage * damageMultiplier,
-                Speed = weaponConfig.PrimaryProjectileSpeed,
-                MaxLifetime = weaponConfig.PrimaryLifetime,
-                TargetPoint = mechController.AimWorldPoint,
-                Instigator = gameObject,
-                InstigatorRole = HealthRole.PlayerMech,
-                ImpactEffectPrefab = impactEffectPrefab
-            });
+                float centeredIndex = count == 1 ? 0f : (i / (float)(count - 1)) - 0.5f;
+                float yawAngle = centeredIndex * primarySpreadAngle;
+                Vector3 shotDirection = Quaternion.AngleAxis(yawAngle, Vector3.up) * baseDirection;
+                Vector3 lateralOffset = right * (centeredIndex * Mathf.Min(0.9f, (count - 1) * 0.32f));
+                Vector3 spawnPos = muzzleOrigin + lateralOffset;
+
+                ProjectileController projectile = Instantiate(
+                    plasmaProjectilePrefab,
+                    spawnPos,
+                    Quaternion.LookRotation(shotDirection, Vector3.up));
+                projectile.gameObject.SetActive(true);
+                projectile.Initialize(new ProjectileLaunchSettings
+                {
+                    IsMissile = false,
+                    Damage = weaponConfig.PrimaryDamage * damageMultiplier,
+                    Speed = weaponConfig.PrimaryProjectileSpeed,
+                    MaxLifetime = weaponConfig.PrimaryLifetime,
+                    TargetPoint = mechController.AimWorldPoint,
+                    Instigator = gameObject,
+                    InstigatorRole = HealthRole.PlayerMech,
+                    ImpactEffectPrefab = impactEffectPrefab
+                });
+            }
 
             currentHeat = Mathf.Min(weaponConfig.MaximumHeat, heatAfterShot);
             lastShotTime = Time.time;
             PublishHeatChanged();
-            SpawnMuzzleFlash(direction);
-            OnWeaponFired?.Invoke(new WeaponFireEvent(false, GetMuzzlePosition(), direction));
+            SpawnMuzzleFlash(baseDirection);
+            OnWeaponFired?.Invoke(new WeaponFireEvent(false, muzzleOrigin, baseDirection));
             if (heatAfterShot >= weaponConfig.MaximumHeat)
                 BeginOverheat();
             return true;
@@ -162,37 +189,48 @@ namespace AegisProtocol.Combat
 
             float heatAfterShot = currentHeat + weaponConfig.MissileHeatPerShot * heatGenerationMultiplier;
 
-            Vector3 direction = mechController.AimWorldPoint - GetMuzzlePosition();
+            Vector3 muzzleOrigin = GetMuzzlePosition();
+            Vector3 direction = mechController.AimWorldPoint - muzzleOrigin;
+            direction.y = 0f;
             if (direction.sqrMagnitude <= 0.0001f)
                 direction = GetAimDirection();
             direction.Normalize();
 
-            ProjectileController projectile = Instantiate(
-                missileProjectilePrefab,
-                GetMuzzlePosition(),
-                Quaternion.LookRotation(direction, Vector3.up));
-            projectile.gameObject.SetActive(true);
-            projectile.Initialize(new ProjectileLaunchSettings
+            Vector3 right = Vector3.Cross(Vector3.up, direction).normalized;
+            int salvo = Mathf.Max(1, missileSalvoCount);
+            for (int i = 0; i < salvo; i++)
             {
-                IsMissile = true,
-                Damage = weaponConfig.MissileDamage * damageMultiplier,
-                Speed = weaponConfig.MissileSpeed,
-                TurnSpeed = weaponConfig.MissileTurnSpeed,
-                ExplosionRadius = weaponConfig.MissileExplosionRadius,
-                MaxLifetime = weaponConfig.MissileLifetime,
-                TargetSearchRadius = MissileTargetSearchRadius,
-                TargetPoint = mechController.AimWorldPoint,
-                Instigator = gameObject,
-                InstigatorRole = HealthRole.PlayerMech,
-                ImpactEffectPrefab = impactEffectPrefab
-            });
+                float centered = salvo == 1 ? 0f : (i / (float)(salvo - 1)) - 0.5f;
+                Vector3 missileDir = Quaternion.AngleAxis(centered * 14f, Vector3.up) * direction;
+                Vector3 spawnPos = muzzleOrigin + right * (centered * 0.65f);
+
+                ProjectileController projectile = Instantiate(
+                    missileProjectilePrefab,
+                    spawnPos,
+                    Quaternion.LookRotation(missileDir, Vector3.up));
+                projectile.gameObject.SetActive(true);
+                projectile.Initialize(new ProjectileLaunchSettings
+                {
+                    IsMissile = true,
+                    Damage = weaponConfig.MissileDamage * damageMultiplier,
+                    Speed = weaponConfig.MissileSpeed,
+                    TurnSpeed = weaponConfig.MissileTurnSpeed,
+                    ExplosionRadius = weaponConfig.MissileExplosionRadius,
+                    MaxLifetime = weaponConfig.MissileLifetime,
+                    TargetSearchRadius = MissileTargetSearchRadius,
+                    TargetPoint = mechController.AimWorldPoint,
+                    Instigator = gameObject,
+                    InstigatorRole = HealthRole.PlayerMech,
+                    ImpactEffectPrefab = impactEffectPrefab
+                });
+            }
 
             currentHeat = Mathf.Min(weaponConfig.MaximumHeat, heatAfterShot);
             missileCooldownRemaining = weaponConfig.MissileCooldown;
             PublishMissileCooldown();
             PublishHeatChanged();
             SpawnMuzzleFlash(direction);
-            OnWeaponFired?.Invoke(new WeaponFireEvent(true, GetMuzzlePosition(), direction));
+            OnWeaponFired?.Invoke(new WeaponFireEvent(true, muzzleOrigin, direction));
             if (cameraRig != null)
                 cameraRig.TriggerCameraShake(MissileShakeIntensity, MissileShakeDuration);
             if (heatAfterShot >= weaponConfig.MaximumHeat)
@@ -218,7 +256,7 @@ namespace AegisProtocol.Combat
             }
             else if (currentHeat > 0f)
             {
-                currentHeat = Mathf.Max(0f, currentHeat - weaponConfig.CoolingRate * deltaTime);
+                currentHeat = Mathf.Max(0f, currentHeat - weaponConfig.CoolingRate * coolingMultiplier * deltaTime);
                 PublishHeatChanged();
             }
         }
