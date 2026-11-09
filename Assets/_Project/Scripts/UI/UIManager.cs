@@ -33,6 +33,7 @@ namespace AegisProtocol.UI
         private AudioManager audioManager;
 
         private GameObject mainPanel;
+        private GameObject levelSelectPanel;
         private GameObject briefingPanel;
         private GameObject howToPanel;
         private GameObject settingsPanel;
@@ -41,8 +42,14 @@ namespace AegisProtocol.UI
         private GameObject pausePanel;
         private GameObject resultPanel;
         private Transform canvasTransform;
+        private Text briefingTitleText;
+        private Text briefingDetailsText;
         private Text resultTitle;
         private Text resultDetails;
+        private GameObject nextLevelButtonObject;
+        private Text nextLevelButtonText;
+        private Button[] levelSelectButtons = Array.Empty<Button>();
+        private Text[] levelSelectLabels = Array.Empty<Text>();
         private Text buildSelectionText;
         private Text interactPromptText;
         private Text waveText;
@@ -105,6 +112,11 @@ namespace AegisProtocol.UI
             ResolveSystemsIfNeeded();
             if (Input.GetKeyDown(KeyCode.F11))
                 ToggleFullscreen();
+            if (Input.GetKeyDown(KeyCode.F10))
+            {
+                gameManager?.UnlockAllLevels();
+                RefreshLevelSelectButtons();
+            }
 
             if (inputReader != null)
             {
@@ -185,6 +197,8 @@ namespace AegisProtocol.UI
         {
             mainPanel = CreatePanel("Main Menu", BackgroundColor);
             BuildMainMenu(mainPanel.transform);
+            levelSelectPanel = CreatePanel("Level Select", BackgroundColor);
+            BuildLevelSelect(levelSelectPanel.transform);
             briefingPanel = CreatePanel("Mission Briefing", BackgroundColor);
             BuildBriefing(briefingPanel.transform);
             howToPanel = CreatePanel("How To Play", BackgroundColor);
@@ -204,31 +218,109 @@ namespace AegisProtocol.UI
 
         private void BuildMainMenu(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 700f, 820f);
+            Transform content = CreateVerticalContent(parent, 740f, 840f);
             CreateText(content, "AEGIS PROTOCOL", 52, AccentColor, 82f, FontStyle.Bold);
-            CreateText(content, "3D TACTICAL MECH & BASE DEFENSE", 22, Color.white, 48f, FontStyle.Bold);
-            AddButton(content, "OYUNA BAŞLA", () => gameManager?.StartRun(), 62f);
+            CreateText(content, "3D TACTICAL MECH & 5-SECTOR CAMPAIGN", 22, Color.white, 48f, FontStyle.Bold);
+            AddButton(content, "OYUNA BAŞLA (SEVİYE SEÇİMİ)", ShowLevelSelectPanel, 64f);
             AddButton(content, "NASIL OYNANIR & PUAN TABLOSU", () => ShowAuxiliaryPanel(howToPanel), 56f);
             AddButton(content, "SES AYARLARI", () => ShowAuxiliaryPanel(settingsPanel), 56f);
             AddButton(content, "ÇIKIŞ", Application.Quit, 56f);
         }
 
+        private void BuildLevelSelect(Transform parent)
+        {
+            Transform content = CreateVerticalContent(parent, 1140f, 960f);
+            CreateText(content, "SEKTÖR & SEVİYE SEÇİMİ (5 KADEMELİ OPERASYON)", 36, AccentColor, 54f, FontStyle.Bold);
+            CreateText(content, "Her seviyeyi bitirdiğinde bir sonraki sektör ve yeni Mech Silah Evrimi açılır! (Test için tüm kilitleri aç: F10)", 18, Color.white, 34f, FontStyle.Normal);
+
+            levelSelectButtons = new Button[SectorLevelConfig.TotalLevels];
+            levelSelectLabels = new Text[SectorLevelConfig.TotalLevels];
+            for (int i = 0; i < SectorLevelConfig.TotalLevels; i++)
+            {
+                int levelNumber = i + 1;
+                Text label = AddButton(content, string.Empty, () => LaunchSelectedLevel(levelNumber), 108f, 18);
+                levelSelectLabels[i] = label;
+                levelSelectButtons[i] = label.transform.parent.GetComponent<Button>();
+            }
+
+            AddButton(content, "GERİ (ANA MENÜ)", () => SetVisibleState(GameState.MainMenu), 52f, 20);
+        }
+
+        private void RefreshLevelSelectButtons()
+        {
+            int maxUnlocked = gameManager != null ? gameManager.MaxUnlockedLevel : 1;
+            for (int i = 0; i < SectorLevelConfig.TotalLevels; i++)
+            {
+                int levelNumber = i + 1;
+                SectorLevelData data = SectorLevelConfig.GetLevel(levelNumber);
+                bool unlocked = levelNumber <= maxUnlocked;
+                string status = unlocked
+                    ? (levelNumber < maxUnlocked ? "[TAMAMLANDI ✓ - AÇIK]" : "[AÇIK - OYNANABİLİR]")
+                    : $"[KİLİTLİ - Önce Seviye {levelNumber - 1}'i Bitir]";
+
+                if (levelSelectLabels[i] != null)
+                {
+                    levelSelectLabels[i].text =
+                        $"{status}   {data.SectorName} ({data.Subtitle})\n" +
+                        $"{data.WeaponEvolutionTitle}\n" +
+                        $"{data.SpecialPerkTitle}";
+                    levelSelectLabels[i].color = unlocked ? Color.white : new Color(0.55f, 0.62f, 0.68f, 0.85f);
+                }
+
+                if (levelSelectButtons[i] != null)
+                    levelSelectButtons[i].interactable = unlocked;
+            }
+        }
+
+        private void ShowLevelSelectPanel()
+        {
+            RefreshLevelSelectButtons();
+            stateBeforeAuxiliaryPanel = GameState.MainMenu;
+            SetAllPanelsInactive();
+            SetPanel(levelSelectPanel, true);
+        }
+
+        private void LaunchSelectedLevel(int levelNumber)
+        {
+            if (gameManager == null)
+                return;
+            if (!gameManager.SelectLevel(levelNumber))
+                return;
+
+            gameManager.StartRun();
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.IsValid() && scene.buildIndex >= 0)
+                SceneManager.LoadScene(scene.buildIndex);
+            else
+                UpdateBriefingTexts();
+        }
+
         private void BuildBriefing(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 900f, 900f);
-            CreateText(content, "GÖREV BRİFİNGİ", 44, AccentColor, 72f, FontStyle.Bold);
-            CreateText(content,
-                "Kuantum Reaktörünü beş kuşatma dalgası boyunca savun.\n" +
-                "Üç uydu iletişim terminalini sinyal alanında 30 saniye kalarak hackle.\n" +
-                "Beşinci dalgada Overlord Titan'ı ve tüm muhafızlarını yok et.\n\n" +
-                "Kazanma: 5 dalga + 3 terminal + Overlord Titan.\n" +
-                "Kaybetme: Mech veya Reaktör HP sıfıra düşerse.\n" +
-                "Puan: düşman ödülleri, +300 hasarsız dalga, terminal başına +500, kalan Reaktör HP ×10.\n\n" +
-                "WASD hareket • Fare nişan • Sol tık plazma • Sağ tık füze • Space dash\n" +
-                "E etkileşim/inşa • 1/2/3 yapı seçimi • Esc/P duraklatma • F taktik fener",
-                24, Color.white, 420f, FontStyle.Normal);
-            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 72f, 24);
-            AddButton(content, "ANA MENÜ", () => gameManager?.ReturnToMainMenu(), 60f, 24);
+            Transform content = CreateVerticalContent(parent, 980f, 920f);
+            briefingTitleText = CreateText(content, "GÖREV BRİFİNGİ", 38, AccentColor, 64f, FontStyle.Bold);
+            briefingDetailsText = CreateText(content, string.Empty, 22, Color.white, 430f, FontStyle.Normal);
+            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 68f, 24);
+            AddButton(content, "SEVİYE DEĞİŞTİR (SEKTÖR SEÇİMİ)", ShowLevelSelectPanel, 56f, 21);
+            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 54f, 21);
+            UpdateBriefingTexts();
+        }
+
+        private void UpdateBriefingTexts()
+        {
+            if (briefingTitleText == null || briefingDetailsText == null)
+                return;
+
+            SectorLevelData data = gameManager != null ? gameManager.CurrentLevelData : SectorLevelConfig.GetLevel(1);
+            briefingTitleText.text = $"{data.SectorName} — {data.Subtitle}";
+            briefingDetailsText.text =
+                $"★ {data.WeaponEvolutionTitle}\n" +
+                $"★ {data.SpecialPerkTitle}\n\n" +
+                "GÖREV HEDEFİ:\n" +
+                "• Ortadaki Kuantum Reaktörünü 5 kuşatma dalgası boyunca koru.\n" +
+                "• 3 Turuncu Uydu Terminalinin halkasında durarak sinyali %100 hackle.\n" +
+                "• 5. dalgadaki Overlord Titan Boss'u ve muhafızlarını yok et!\n\n" +
+                "KONTROLLER: WASD Hareket | Sol Tık Plazma | Sağ Tık Füze | Space Dash | Mavi Halkada [E] Kule Kur";
         }
 
         private void BuildHowToPlay(Transform parent)
@@ -291,11 +383,23 @@ namespace AegisProtocol.UI
 
         private void BuildResultScreen(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 850f, 720f);
-            resultTitle = CreateText(content, "GÖREV SONUCU", 42, AccentColor, 72f, FontStyle.Bold);
-            resultDetails = CreateText(content, string.Empty, 24, Color.white, 220f, FontStyle.Normal);
-            AddButton(content, "TEKRAR OYNA", RestartCurrentScene, 62f);
-            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 56f);
+            Transform content = CreateVerticalContent(parent, 920f, 820f);
+            resultTitle = CreateText(content, "GÖREV SONUCU", 38, AccentColor, 72f, FontStyle.Bold);
+            resultDetails = CreateText(content, string.Empty, 23, Color.white, 260f, FontStyle.Normal);
+            nextLevelButtonText = AddButton(content, "SONRAKİ SEVİYEYE GEÇ", AdvanceToNextLevel, 66f, 23);
+            nextLevelButtonObject = nextLevelButtonText.transform.parent.gameObject;
+            AddButton(content, "BU SEVİYEYİ TEKRAR OYNA", RestartCurrentScene, 58f);
+            AddButton(content, "SEVİYE SEÇİMİ", ShowLevelSelectPanel, 56f);
+            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 54f);
+        }
+
+        private void AdvanceToNextLevel()
+        {
+            if (gameManager == null)
+                return;
+
+            int nextLevel = Mathf.Min(SectorLevelConfig.TotalLevels, gameManager.CurrentLevel + 1);
+            LaunchSelectedLevel(nextLevel);
         }
 
         private void BuildUpgradeScreen(Transform parent)
@@ -379,7 +483,7 @@ namespace AegisProtocol.UI
             SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "REAKTÖR");
             if (gameManager != null)
             {
-                waveText.text = $"DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5";
+                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5";
                 float targetTime = Mathf.Max(targetDurationSeconds, gameManager.ElapsedSeconds + gameManager.RemainingSeconds);
                 timerText.text = $"SÜRE {FormatTime(gameManager.ElapsedSeconds)} / {FormatTime(targetTime)}";
                 scoreText.text = $"SKOR {gameManager.TotalScore:N0}";
@@ -451,8 +555,11 @@ namespace AegisProtocol.UI
             SetPanel(upgradePanel, state == GameState.WaveUpgradeSelection);
             SetPanel(pausePanel, state == GameState.Paused);
             SetPanel(resultPanel, state == GameState.Victory || state == GameState.Defeat);
+            SetPanel(levelSelectPanel, false);
             SetPanel(howToPanel, false);
             SetPanel(settingsPanel, false);
+            if (state == GameState.Briefing)
+                UpdateBriefingTexts();
             if (state == GameState.Victory || state == GameState.Defeat)
                 UpdateResultSummary(state);
         }
@@ -460,6 +567,7 @@ namespace AegisProtocol.UI
         private void SetAllPanelsInactive()
         {
             SetPanel(mainPanel, false);
+            SetPanel(levelSelectPanel, false);
             SetPanel(briefingPanel, false);
             SetPanel(howToPanel, false);
             SetPanel(settingsPanel, false);
@@ -475,15 +583,26 @@ namespace AegisProtocol.UI
                 return;
 
             bool victory = state == GameState.Victory;
+            bool hasNext = victory && gameManager.HasNextLevel;
+            if (nextLevelButtonObject != null)
+                nextLevelButtonObject.SetActive(hasNext);
+            if (hasNext && nextLevelButtonText != null)
+            {
+                SectorLevelData nextData = SectorLevelConfig.GetLevel(gameManager.CurrentLevel + 1);
+                nextLevelButtonText.text = $"SONRAKİ SEVİYEYE GEÇ ({nextData.SectorName})";
+            }
+
             resultTitle.text = victory
-                ? "GÖREV BAŞARILI: KUANTUM REAKTÖRÜ KORUNDU"
-                : "GÖREV BAŞARISIZ";
+                ? (hasNext
+                    ? $"SEVİYE {gameManager.CurrentLevel} TAMAMLANDI! SEVİYE {gameManager.CurrentLevel + 1} AÇILDI!"
+                    : "TÜM 5 SEKTÖR KURTARILDI: KUSURSUZ ZAFER!")
+                : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ";
             resultTitle.color = victory ? AccentColor : new Color(1f, 0.25f, 0.2f);
             resultDetails.text =
+                $"SEKTÖR: {gameManager.CurrentLevelData.SectorName}\n" +
                 $"TOPLAM SKOR: {gameManager.TotalScore:N0}\n" +
-                $"HAYATTA KALINAN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
-                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5\n" +
-                $"TAMAMLANAN TERMİNAL: {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
+                $"GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
+                $"TAMAMLANAN DALGA: {gameManager.CompletedWaves}/5   |   UYDU TERMİNALİ: {gameManager.CompletedTerminals}/{gameManager.RequiredTerminals}";
         }
 
         private void ShowAuxiliaryPanel(GameObject panel)
