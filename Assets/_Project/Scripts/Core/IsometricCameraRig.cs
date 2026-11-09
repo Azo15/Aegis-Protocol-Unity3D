@@ -22,16 +22,16 @@ namespace AegisProtocol.Core
         [SerializeField] private MechController mechController;
         [SerializeField] private PlayerInputReader inputReader;
         [SerializeField] private CameraViewMode currentViewMode = CameraViewMode.ThirdPerson3D;
-        [SerializeField, Range(10f, 65f)] private float pitchAngle = 24f;
+        [SerializeField, Range(10f, 65f)] private float pitchAngle = 34f;
         [SerializeField] private float yawAngle = 0f;
-        [SerializeField, Min(1f)] private float followDistance = 12.5f;
-        [SerializeField, Min(0f)] private float targetHeightOffset = 1.4f;
+        [SerializeField, Min(1f)] private float followDistance = 19.5f;
+        [SerializeField, Min(0f)] private float targetHeightOffset = 1.6f;
         [SerializeField, Min(0f)] private float aimLeadOffset = 0f;
         [SerializeField, Min(0.01f)] private float smoothTime = 0.06f;
         [SerializeField] private bool useOrthographicProjection = false;
         [SerializeField, Min(1f)] private float orthographicSize = 12f;
-        [SerializeField, Range(40f, 80f)] private float perspectiveFieldOfView = 58f;
-        [SerializeField, Min(10f)] private float orbitSpeedDegrees = 95f;
+        [SerializeField, Range(40f, 80f)] private float perspectiveFieldOfView = 60f;
+        [SerializeField, Min(10f)] private float orbitSpeedDegrees = 85f;
 
         [Header("Tactical Light")]
         [SerializeField] private Light tacticalSpotlight = null;
@@ -41,7 +41,6 @@ namespace AegisProtocol.Core
         private Vector3 smoothVelocity;
         private Vector3 smoothedPosition;
         private float zoomMultiplier = 1f;
-        private float cockpitYawAngle;
         private float shakeRemaining;
         private float shakeDuration;
         private float shakeIntensity;
@@ -55,8 +54,8 @@ namespace AegisProtocol.Core
         public Light TacticalSpotlight => tacticalSpotlight;
         public bool TacticalLightEnabled => tacticalSpotlight != null && tacticalSpotlight.enabled;
         public CameraViewMode CurrentViewMode => currentViewMode;
-        public bool IsCockpitMode => currentViewMode == CameraViewMode.TankCockpitFPS;
-        public float YawAngle => IsCockpitMode ? cockpitYawAngle : yawAngle;
+        public bool IsCockpitMode => false;
+        public float YawAngle => yawAngle;
 
         public string CurrentViewModeDisplayName
         {
@@ -65,13 +64,13 @@ namespace AegisProtocol.Core
                 switch (currentViewMode)
                 {
                     case CameraViewMode.ThirdPerson3D:
-                        return "3B YAKIN TAKİP (TPS)";
+                        return "DENGELİ 3B SAVAŞ AÇISI";
                     case CameraViewMode.TankCockpitFPS:
-                        return "TANK İÇİ KOKPİT (FPS)";
+                        return "TANK ARKASI YAKIN 3B";
                     case CameraViewMode.LowCinematic3D:
-                        return "3B ALÇAK SİNEMATİK";
+                        return "ORTA MESAFE 3B TAKİP";
                     case CameraViewMode.TacticalOverview3D:
-                        return "3B GENİŞ KUŞBAKIŞI";
+                        return "GENİŞ KUŞBAKIŞI 3B";
                     default:
                         return "3B KAMERA";
                 }
@@ -116,25 +115,21 @@ namespace AegisProtocol.Core
                 orbitInput -= 1f;
             if (Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.RightArrow))
                 orbitInput += 1f;
-            if (Input.GetMouseButton(2))
-                orbitInput += Input.GetAxis("Mouse X") * 2.4f;
 
             if (Mathf.Abs(orbitInput) > 0.001f)
-            {
                 yawAngle = Mathf.Repeat(yawAngle + orbitInput * orbitSpeedDegrees * Time.deltaTime, 360f);
-                cockpitYawAngle = Mathf.Repeat(cockpitYawAngle + orbitInput * orbitSpeedDegrees * Time.deltaTime, 360f);
-            }
 
-            if (IsCockpitMode)
-            {
-                float mouseDeltaX = Input.GetAxis("Mouse X");
-                if (Mathf.Abs(mouseDeltaX) > 0.0005f)
-                    cockpitYawAngle = Mathf.Repeat(cockpitYawAngle + mouseDeltaX * 3.2f, 360f);
-            }
-
+            float zoomDelta = 0f;
             float scroll = Input.GetAxis("Mouse ScrollWheel");
-            if (Mathf.Abs(scroll) > 0.001f && !IsCockpitMode)
-                zoomMultiplier = Mathf.Clamp(zoomMultiplier - scroll * 0.85f, 0.55f, 1.65f);
+            if (Mathf.Abs(scroll) > 0.001f)
+                zoomDelta -= scroll * 0.95f;
+            if (Input.GetKey(KeyCode.UpArrow))
+                zoomDelta -= 0.55f * Time.deltaTime;
+            if (Input.GetKey(KeyCode.DownArrow))
+                zoomDelta += 0.55f * Time.deltaTime;
+
+            if (Mathf.Abs(zoomDelta) > 0.0001f)
+                zoomMultiplier = Mathf.Clamp(zoomMultiplier + zoomDelta, 0.60f, 1.85f);
         }
 
         private void LateUpdate()
@@ -146,12 +141,6 @@ namespace AegisProtocol.Core
                 return;
 
             ApplyProjectionSettings();
-
-            if (IsCockpitMode)
-            {
-                UpdateCockpitView();
-                return;
-            }
 
             GetModeCameraParameters(out float modePitch, out float modeDistance, out float modeHeight);
             Vector3 focusPoint = target.position + Vector3.up * modeHeight;
@@ -178,34 +167,29 @@ namespace AegisProtocol.Core
             transform.rotation = cameraRotation;
         }
 
-        private void UpdateCockpitView()
-        {
-            Vector3 lookForward = Quaternion.Euler(0f, cockpitYawAngle, 0f) * Vector3.forward;
-            Vector3 cockpitPosition = target.position + Vector3.up * 1.92f - lookForward * 0.32f;
-            Quaternion cockpitRotation = Quaternion.LookRotation(lookForward + Vector3.down * 0.12f, Vector3.up);
-            smoothedPosition = cockpitPosition;
-            transform.position = cockpitPosition + GetShakeOffset(Time.deltaTime) * 0.30f;
-            transform.rotation = cockpitRotation;
-        }
-
         private void GetModeCameraParameters(out float modePitch, out float modeDistance, out float modeHeight)
         {
             switch (currentViewMode)
             {
                 case CameraViewMode.ThirdPerson3D:
-                    modePitch = 23f;
-                    modeDistance = 12.0f;
+                    modePitch = 34f;
+                    modeDistance = 19.5f;
                     modeHeight = 1.6f;
                     break;
+                case CameraViewMode.TankCockpitFPS:
+                    modePitch = 19f;
+                    modeDistance = 9.2f;
+                    modeHeight = 2.0f;
+                    break;
                 case CameraViewMode.LowCinematic3D:
-                    modePitch = 13f;
-                    modeDistance = 7.8f;
-                    modeHeight = 1.45f;
+                    modePitch = 26f;
+                    modeDistance = 14.0f;
+                    modeHeight = 1.75f;
                     break;
                 case CameraViewMode.TacticalOverview3D:
-                    modePitch = 48f;
-                    modeDistance = 24f;
-                    modeHeight = 1.2f;
+                    modePitch = 50f;
+                    modeDistance = 27.5f;
+                    modeHeight = 1.3f;
                     break;
                 default:
                     modePitch = pitchAngle;
@@ -224,7 +208,7 @@ namespace AegisProtocol.Core
             if (useOrthographicProjection)
                 controlledCamera.orthographicSize = orthographicSize;
             else
-                controlledCamera.fieldOfView = IsCockpitMode ? 66f : perspectiveFieldOfView;
+                controlledCamera.fieldOfView = perspectiveFieldOfView;
         }
 
         public void CycleCameraMode()
@@ -237,13 +221,6 @@ namespace AegisProtocol.Core
         {
             currentViewMode = mode;
             useOrthographicProjection = false;
-            if (mode == CameraViewMode.TankCockpitFPS && mechController != null)
-            {
-                Vector3 dir = mechController.AimDirection;
-                dir.y = 0f;
-                if (dir.sqrMagnitude > 0.001f)
-                    cockpitYawAngle = Quaternion.LookRotation(dir.normalized, Vector3.up).eulerAngles.y;
-            }
             ApplyProjectionSettings();
             OnCameraViewModeChanged?.Invoke(currentViewMode);
         }

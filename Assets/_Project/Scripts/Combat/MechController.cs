@@ -222,25 +222,6 @@ namespace AegisProtocol.Combat
             if (turretTransform == null)
                 return;
 
-            if (aimCamera == null)
-                aimCamera = Camera.main;
-            if (aimCamera == null)
-                return;
-
-            IsometricCameraRig cameraRig = aimCamera.GetComponent<IsometricCameraRig>();
-            if (cameraRig != null && cameraRig.IsCockpitMode)
-            {
-                Vector3 cockpitDir = Quaternion.Euler(0f, cameraRig.YawAngle, 0f) * Vector3.forward;
-                cockpitDir.y = 0f;
-                if (cockpitDir.sqrMagnitude > 0.0001f)
-                {
-                    AimDirection = cockpitDir.normalized;
-                    AimWorldPoint = turretTransform.position + AimDirection * 24f;
-                    turretTransform.rotation = Quaternion.LookRotation(AimDirection, Vector3.up);
-                }
-                return;
-            }
-
             if (float.IsNaN(pointerPosition.x) || float.IsNaN(pointerPosition.y) ||
                 float.IsInfinity(pointerPosition.x) || float.IsInfinity(pointerPosition.y) ||
                 pointerPosition.x < 0f || pointerPosition.y < 0f ||
@@ -248,6 +229,11 @@ namespace AegisProtocol.Combat
             {
                 return;
             }
+
+            if (aimCamera == null)
+                aimCamera = Camera.main;
+            if (aimCamera == null)
+                return;
 
             Ray ray = aimCamera.ScreenPointToRay(pointerPosition);
             if (ray.direction.sqrMagnitude <= 0.0001f)
@@ -300,16 +286,9 @@ namespace AegisProtocol.Combat
                 return true;
 
             Plane groundPlane = new Plane(Vector3.up, new Vector3(0f, transform.position.y, 0f));
-            if (groundPlane.Raycast(ray, out float distance) && distance >= 0f && distance <= 120f)
+            if (groundPlane.Raycast(ray, out float distance) && distance >= 0f)
             {
                 point = ray.GetPoint(distance);
-                return true;
-            }
-
-            Vector3 flatRayDir = new Vector3(ray.direction.x, 0f, ray.direction.z);
-            if (flatRayDir.sqrMagnitude > 0.0001f)
-            {
-                point = transform.position + flatRayDir.normalized * 35f;
                 return true;
             }
 

@@ -111,9 +111,19 @@ namespace AegisProtocol.Core
 
         private static PlayerInputSnapshot ReadClassicInput()
         {
-            Vector2 move = new Vector2(
-                Input.GetAxisRaw("Horizontal"),
-                Input.GetAxisRaw("Vertical"));
+            float moveX = 0f;
+            if (Input.GetKey(KeyCode.A))
+                moveX -= 1f;
+            if (Input.GetKey(KeyCode.D))
+                moveX += 1f;
+
+            float moveY = 0f;
+            if (Input.GetKey(KeyCode.S))
+                moveY -= 1f;
+            if (Input.GetKey(KeyCode.W))
+                moveY += 1f;
+
+            Vector2 move = new Vector2(moveX, moveY);
 
             return new PlayerInputSnapshot(
                 move,

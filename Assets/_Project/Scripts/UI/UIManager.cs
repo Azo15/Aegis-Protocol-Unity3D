@@ -524,22 +524,22 @@ namespace AegisProtocol.UI
 
             Text guideBanner = CreateHudText(
                 parent,
-                "GÖREV: Ortadaki Kaleyi Koru! | [C] Kamera Açısı (Tank İçi Kokpit / 3B) | [Q/R veya Oklar] Açıyı Döndür | SOL TIK: Ateş | SAĞ TIK: Füze",
+                "WASD: Tank Hareketi  |  FARE: Nişan & Ateş (Sol: Tüfek / Sağ: Füze)\n[C]: Kamera Açısı  |  [Sol/Sağ Ok]: Bakış Yönü  |  [Yukarı/Aşağı Ok]: Yakınlaştır/Uzaklaştır",
                 new Vector2(0f, -18f),
                 new Vector2(0.5f, 1f),
-                17,
+                15,
                 TextAnchor.UpperCenter);
-            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(1260f, 48f);
+            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(760f, 52f);
             guideBanner.color = new Color(0.75f, 0.96f, 1f, 0.95f);
 
             cameraModeText = CreateHudText(
                 parent,
-                "[C] KAMERA: 3B YAKIN TAKİP (TPS)  |  [Q/R veya Ok Tuşları] Açıyı Döndür",
+                "[C] KAMERA: DENGELİ 3B SAVAŞ AÇISI  |  [Ok Tuşları] Döndür & Uzaklaştır",
                 new Vector2(28f, -158f),
                 new Vector2(0f, 1f),
-                17,
+                16,
                 TextAnchor.UpperLeft);
-            cameraModeText.GetComponent<RectTransform>().sizeDelta = new Vector2(680f, 34f);
+            cameraModeText.GetComponent<RectTransform>().sizeDelta = new Vector2(640f, 34f);
             cameraModeText.color = new Color(1f, 0.88f, 0.32f, 1f);
 
             cockpitCrosshairText = CreateHudText(
@@ -593,10 +593,10 @@ namespace AegisProtocol.UI
                 if (cameraModeText != null)
                 {
                     cameraModeText.text =
-                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Q/R veya Oklar] 360° Döndür";
+                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Ok Tuşları] Döndür & Uzaklaştır";
                 }
                 if (cockpitCrosshairText != null)
-                    cockpitCrosshairText.gameObject.SetActive(cameraRig.IsCockpitMode);
+                    cockpitCrosshairText.gameObject.SetActive(false);
             }
             if (gameManager != null)
             {
