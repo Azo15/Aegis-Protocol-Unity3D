@@ -31,7 +31,7 @@ namespace AegisProtocol.Core
         [SerializeField] private bool useOrthographicProjection = false;
         [SerializeField, Min(1f)] private float orthographicSize = 12f;
         [SerializeField, Range(40f, 80f)] private float perspectiveFieldOfView = 60f;
-        [SerializeField, Min(10f)] private float orbitSpeedDegrees = 85f;
+        [SerializeField, Min(10f)] private float orbitSpeedDegrees = 110f;
 
         [Header("Tactical Light")]
         [SerializeField] private Light tacticalSpotlight = null;
@@ -111,10 +111,28 @@ namespace AegisProtocol.Core
                 CycleCameraMode();
 
             float orbitInput = 0f;
-            if (Input.GetKey(KeyCode.Q))
+            if (Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A))
                 orbitInput -= 1f;
-            if (Input.GetKey(KeyCode.R))
+            if (Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D))
                 orbitInput += 1f;
+
+            if (Input.GetMouseButton(1) || Input.GetMouseButton(2))
+            {
+                orbitInput += Input.GetAxis("Mouse X") * 2.2f;
+            }
+            else if (Mathf.Abs(orbitInput) < 0.01f)
+            {
+                Vector3 mousePos = Input.mousePosition;
+                if (mousePos.x >= 0f && mousePos.x <= Screen.width &&
+                    mousePos.y >= 0f && mousePos.y <= Screen.height)
+                {
+                    float normX = mousePos.x / Mathf.Max(1f, Screen.width);
+                    if (normX < 0.12f)
+                        orbitInput -= (0.12f - normX) / 0.12f * 0.75f;
+                    else if (normX > 0.88f)
+                        orbitInput += (normX - 0.88f) / 0.12f * 0.75f;
+                }
+            }
 
             if (Mathf.Abs(orbitInput) > 0.001f)
                 yawAngle = Mathf.Repeat(yawAngle + orbitInput * orbitSpeedDegrees * Time.deltaTime, 360f);
@@ -145,25 +163,25 @@ namespace AegisProtocol.Core
             GetModeCameraParameters(out float modePitch, out float modeDistance, out float modeHeight);
             Vector3 focusPoint = target.position + Vector3.up * modeHeight;
             Quaternion cameraRotation = Quaternion.Euler(modePitch, yawAngle, 0f);
-            Vector3 desiredPosition = focusPoint + cameraRotation * (Vector3.back * (modeDistance * zoomMultiplier));
 
             if (!hasInitialPosition)
             {
-                smoothedPosition = desiredPosition;
+                smoothedPosition = focusPoint;
                 hasInitialPosition = true;
             }
             else
             {
                 smoothedPosition = Vector3.SmoothDamp(
                     smoothedPosition,
-                    desiredPosition,
+                    focusPoint,
                     ref smoothVelocity,
                     smoothTime,
                     Mathf.Infinity,
                     Time.deltaTime);
             }
 
-            transform.position = smoothedPosition + GetShakeOffset(Time.deltaTime);
+            Vector3 orbitOffset = cameraRotation * (Vector3.back * (modeDistance * zoomMultiplier));
+            transform.position = smoothedPosition + orbitOffset + GetShakeOffset(Time.deltaTime);
             transform.rotation = cameraRotation;
         }
 

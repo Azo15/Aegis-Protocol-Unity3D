@@ -101,9 +101,22 @@ namespace AegisProtocol.Combat
                 return;
 
             PlayerInputSnapshot input = inputReader.CurrentSnapshot;
-            Vector3 moveDirection = GetCameraRelativeMoveDirection(input.MoveVector);
-            if (moveDirection.sqrMagnitude > 0.0001f)
-                RotateChassis(moveDirection.normalized, Time.deltaTime);
+            if (aimCamera == null)
+                aimCamera = Camera.main;
+
+            if (aimCamera != null)
+            {
+                Vector3 camForward = aimCamera.transform.forward;
+                camForward.y = 0f;
+                if (camForward.sqrMagnitude > 0.0001f)
+                    RotateChassis(camForward.normalized, Time.deltaTime);
+            }
+            else
+            {
+                Vector3 moveDirection = GetCameraRelativeMoveDirection(input.MoveVector);
+                if (moveDirection.sqrMagnitude > 0.0001f)
+                    RotateChassis(moveDirection.normalized, Time.deltaTime);
+            }
 
             UpdateAim(input.PointerScreenPosition);
 
@@ -340,7 +353,7 @@ namespace AegisProtocol.Combat
                     camRight = Vector3.right;
                 camRight.Normalize();
 
-                return camRight * moveInput.x + camForward * moveInput.y;
+                return camRight * (moveInput.x * 0.45f) + camForward * moveInput.y;
             }
 
             return new Vector3(moveInput.x, 0f, moveInput.y);
