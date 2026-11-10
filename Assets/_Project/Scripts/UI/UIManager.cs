@@ -631,7 +631,7 @@ namespace AegisProtocol.UI
             if (resourceBank != null)
                 crystalText.text = $"ENERJİ KRİSTALİ: {resourceBank.CurrentBalance}";
             if (buildManager != null)
-                buildSelectionText.text = $"[1] LAZER 50   [2] EMP 75   [3] ONARIM 100   | SEÇİLİ: {buildManager.SelectedStructureType}";
+                buildSelectionText.text = $"[1] LAZER 50   [2] EMP 75   [3] ONARIM 100   [H] İLAÇ / CAN DOLDUR (+150 CAN)   | SEÇİLİ: {buildManager.SelectedStructureType}";
             if (interactionScanner != null)
             {
                 bool lowMech = mechHealth != null && mechHealth.HealthRatio < 0.38f;

@@ -353,11 +353,18 @@ namespace AegisProtocol.Core
         private EnergyCrystalPickup CreateCrystalTemplate(Material material)
         {
             GameObject templates = GetOrCreateTemplatesRoot();
-            GameObject crystal = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject crystal = GameObject.CreatePrimitive(PrimitiveType.Cube);
             crystal.name = "Energy Crystal Pickup Template";
             crystal.transform.SetParent(templates.transform, false);
-            crystal.transform.localScale = Vector3.one * 0.7f;
+            crystal.transform.localScale = new Vector3(0.75f, 0.45f, 0.75f);
             SetMaterial(crystal, material);
+
+            Material medkitGreenMat = CreateMaterial(new Color(0.18f, 0.96f, 0.35f), new Color(0.3f, 1.8f, 0.55f));
+            CreateVisualPrimitive("MedkitCrossH", PrimitiveType.Cube, crystal.transform,
+                new Vector3(0f, 0.62f, 0f), new Vector3(0.72f, 0.25f, 0.24f), medkitGreenMat);
+            CreateVisualPrimitive("MedkitCrossV", PrimitiveType.Cube, crystal.transform,
+                new Vector3(0f, 0.62f, 0f), new Vector3(0.24f, 0.25f, 0.72f), medkitGreenMat);
+
             crystal.AddComponent<EnergyCrystalPickup>();
             crystal.SetActive(false);
             return crystal.GetComponent<EnergyCrystalPickup>();

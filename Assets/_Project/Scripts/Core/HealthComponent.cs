@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using AegisProtocol.UI;
 
 namespace AegisProtocol.Core
 {
@@ -44,6 +45,14 @@ namespace AegisProtocol.Core
                 maxHealth = ReactorDefaultMaxHealth;
 
             Initialize();
+        }
+
+        private void Start()
+        {
+            if (Application.isPlaying && GetComponent<WorldHealthBar>() == null)
+            {
+                gameObject.AddComponent<WorldHealthBar>();
+            }
         }
 
         private void OnValidate()

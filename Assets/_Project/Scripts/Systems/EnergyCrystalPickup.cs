@@ -14,6 +14,7 @@ namespace AegisProtocol.Systems
         [SerializeField, Min(0.01f)] private float maxLifetime = 30f;
 
         private Transform playerTarget;
+        private HealthComponent playerHealth;
         private CrystalResourceBank resourceBank;
         private float lifetimeRemaining;
         private bool isAttracted;
@@ -79,6 +80,7 @@ namespace AegisProtocol.Systems
                 if (candidate != null && candidate.Role == HealthRole.PlayerMech && !candidate.IsDead)
                 {
                     playerTarget = candidate.transform;
+                    playerHealth = candidate;
                     break;
                 }
             }
@@ -90,6 +92,10 @@ namespace AegisProtocol.Systems
                 return;
 
             resourceBank.AddCrystals(crystalAmount);
+            if (playerHealth != null && !playerHealth.IsDead && playerHealth.CurrentHealth < playerHealth.MaxHealth)
+            {
+                playerHealth.Heal(25f);
+            }
             Destroy(gameObject);
         }
 

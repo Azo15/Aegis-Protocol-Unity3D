@@ -109,6 +109,30 @@ namespace AegisProtocol.Combat
 
             if (input.DashPressed)
                 TryStartDash(input.MoveVector);
+
+            if (Input.GetKeyDown(KeyCode.H))
+                TryUseEmergencyMedkit();
+        }
+
+        private void TryUseEmergencyMedkit()
+        {
+            if (health == null || health.IsDead || health.CurrentHealth >= health.MaxHealth - 0.5f)
+                return;
+
+            AegisProtocol.Systems.CrystalResourceBank bank = AegisProtocol.Systems.CrystalResourceBank.Instance;
+            if (bank != null && bank.CurrentBalance >= 20)
+            {
+                if (bank.TrySpend(20))
+                {
+                    health.Heal(150f);
+                    AegisProtocol.Audio.AudioManager.Instance?.PlayUiConfirm();
+                }
+            }
+            else
+            {
+                health.Heal(90f);
+                AegisProtocol.Audio.AudioManager.Instance?.PlayUiConfirm();
+            }
         }
 
         private void FixedUpdate()
