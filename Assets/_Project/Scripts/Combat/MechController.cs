@@ -122,16 +122,14 @@ namespace AegisProtocol.Combat
             AegisProtocol.Systems.CrystalResourceBank bank = AegisProtocol.Systems.CrystalResourceBank.Instance;
             if (bank != null && bank.CurrentBalance >= 20)
             {
-                if (bank.TrySpend(20))
+                if (bank.TrySpendCrystals(20))
                 {
                     health.Heal(150f);
-                    AegisProtocol.Audio.AudioManager.Instance?.PlayUiConfirm();
                 }
             }
             else
             {
                 health.Heal(90f);
-                AegisProtocol.Audio.AudioManager.Instance?.PlayUiConfirm();
             }
         }
 
