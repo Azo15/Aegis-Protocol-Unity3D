@@ -111,9 +111,9 @@ namespace AegisProtocol.Core
                 CycleCameraMode();
 
             float orbitInput = 0f;
-            if (Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.LeftArrow))
+            if (Input.GetKey(KeyCode.Q))
                 orbitInput -= 1f;
-            if (Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.RightArrow))
+            if (Input.GetKey(KeyCode.R))
                 orbitInput += 1f;
 
             if (Mathf.Abs(orbitInput) > 0.001f)
@@ -123,9 +123,9 @@ namespace AegisProtocol.Core
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             if (Mathf.Abs(scroll) > 0.001f)
                 zoomDelta -= scroll * 0.95f;
-            if (Input.GetKey(KeyCode.UpArrow))
+            if (Input.GetKey(KeyCode.Z))
                 zoomDelta -= 0.55f * Time.deltaTime;
-            if (Input.GetKey(KeyCode.DownArrow))
+            if (Input.GetKey(KeyCode.X))
                 zoomDelta += 0.55f * Time.deltaTime;
 
             if (Mathf.Abs(zoomDelta) > 0.0001f)

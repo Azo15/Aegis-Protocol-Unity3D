@@ -524,7 +524,7 @@ namespace AegisProtocol.UI
 
             Text guideBanner = CreateHudText(
                 parent,
-                "WASD: Tank Hareketi  |  FARE: Nişan & Ateş (Sol: Tüfek / Sağ: Füze)\n[C]: Kamera Açısı  |  [Sol/Sağ Ok]: Bakış Yönü  |  [Yukarı/Aşağı Ok]: Yakınlaştır/Uzaklaştır",
+                "OK TUŞLARI / WASD: Tank Hareketi  |  FARE: Nişan & Ateş (Sol: Tüfek / Sağ: Füze)\n[C]: Kamera Açısı Değiştir  |  [Q / R]: Kamerayı Döndür  |  [Z / X veya Tekerlek]: Yakınlaştır",
                 new Vector2(0f, -18f),
                 new Vector2(0.5f, 1f),
                 15,
@@ -534,7 +534,7 @@ namespace AegisProtocol.UI
 
             cameraModeText = CreateHudText(
                 parent,
-                "[C] KAMERA: DENGELİ 3B SAVAŞ AÇISI  |  [Ok Tuşları] Döndür & Uzaklaştır",
+                "[C] KAMERA: DENGELİ 3B SAVAŞ AÇISI  |  [Q/R] Döndür  |  [Z/X] Uzaklaştır",
                 new Vector2(28f, -158f),
                 new Vector2(0f, 1f),
                 16,
@@ -593,7 +593,7 @@ namespace AegisProtocol.UI
                 if (cameraModeText != null)
                 {
                     cameraModeText.text =
-                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Ok Tuşları] Döndür & Uzaklaştır";
+                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Q/R] Döndür  |  [Z/X] Uzaklaştır";
                 }
                 if (cockpitCrosshairText != null)
                     cockpitCrosshairText.gameObject.SetActive(false);
