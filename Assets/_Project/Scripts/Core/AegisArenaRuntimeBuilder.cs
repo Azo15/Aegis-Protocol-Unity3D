@@ -283,7 +283,6 @@ namespace AegisProtocol.Core
             out ProjectileController missileTemplate,
             out EnergyCrystalPickup crystalTemplate)
         {
-            int lvl = Mathf.Clamp(levelNumber, 1, 5);
             GameObject mech = new GameObject("Player Mech");
             mech.transform.SetParent(runtimeRoot.transform, false);
             mech.transform.position = new Vector3(0f, 1.1f, -8f);
@@ -313,10 +312,13 @@ namespace AegisProtocol.Core
             turret.localPosition = new Vector3(0f, 0.35f, 0f);
             GameObject turretArmor = CreatePrimitive("Turret Armor", PrimitiveType.Sphere, turret,
                 new Vector3(0f, 0.1f, 0f), new Vector3(1.5f, 0.85f, 1.6f), accentMaterial);
+            GameObject plasmaBarrel = CreatePrimitive("Plasma Barrel", PrimitiveType.Cylinder, turret,
+                new Vector3(0f, 0.05f, 1.15f), new Vector3(0.24f, 0.85f, 0.24f), bodyMaterial,
+                Quaternion.Euler(90f, 0f, 0f));
             turretArmor.GetComponent<Collider>().enabled = false;
+            plasmaBarrel.GetComponent<Collider>().enabled = false;
 
-            BuildPlayerTurretWeapons(turret, lvl, bodyMaterial, accentMaterial);
-
+            BuildPlayerMechTierEvolution(chassis, turret, bodyMaterial, accentMaterial, levelNumber);
             Transform muzzle = new GameObject("Plasma Muzzle").transform;
             muzzle.SetParent(turret, false);
             muzzle.localPosition = new Vector3(0f, 0.05f, 2.0f);
@@ -351,38 +353,76 @@ namespace AegisProtocol.Core
             return mech.transform;
         }
 
-        private void BuildPlayerTurretWeapons(Transform turret, int levelNumber, Material bodyMat, Material accentMat)
+        private void BuildPlayerMechTierEvolution(
+            Transform chassis,
+            Transform turret,
+            Material bodyMaterial,
+            Material accentMaterial,
+            int levelNumber)
         {
-            int barrelCount = Mathf.Clamp(levelNumber, 1, 5);
-            float totalWidth = (barrelCount - 1) * 0.30f;
-            for (int i = 0; i < barrelCount; i++)
+            int lvl = Mathf.Clamp(levelNumber, 1, 5);
+            Material darkArmorMat = CreateMaterial(new Color(0.14f, 0.20f, 0.28f), new Color(0.04f, 0.08f, 0.12f));
+            Material goldTrimMat = CreateMaterial(new Color(1f, 0.82f, 0.22f), new Color(1.6f, 1.15f, 0.25f));
+
+            // Base Mk-I details: front optic visor & command cupola
+            DisableCollider(CreatePrimitive("Turret Optic Visor", PrimitiveType.Cube, turret,
+                new Vector3(0f, 0.22f, 0.68f), new Vector3(0.75f, 0.18f, 0.24f), accentMaterial));
+            DisableCollider(CreatePrimitive("Command Cupola", PrimitiveType.Cylinder, turret,
+                new Vector3(0f, 0.52f, -0.15f), new Vector3(0.65f, 0.12f, 0.65f), darkArmorMat));
+
+            // Level 2+: Twin Side Barrels & Side Track Skirts
+            if (lvl >= 2)
             {
-                float xOffset = barrelCount == 1 ? 0f : -totalWidth * 0.5f + i * 0.30f;
-                float yOffset = (i % 2 == 0) ? 0.06f : 0.14f;
-                DisableCollider(CreatePrimitive($"Plasma Barrel {i + 1}", PrimitiveType.Cylinder, turret,
-                    new Vector3(xOffset, yOffset, 1.18f), new Vector3(0.20f, 0.88f, 0.20f), bodyMat,
+                DisableCollider(CreatePrimitive("Left Aux Barrel", PrimitiveType.Cylinder, turret,
+                    new Vector3(-0.36f, 0.05f, 1.05f), new Vector3(0.18f, 0.78f, 0.18f), darkArmorMat,
                     Quaternion.Euler(90f, 0f, 0f)));
-                DisableCollider(CreatePrimitive($"Muzzle Tip {i + 1}", PrimitiveType.Cylinder, turret,
-                    new Vector3(xOffset, yOffset, 1.98f), new Vector3(0.26f, 0.10f, 0.26f), accentMat,
+                DisableCollider(CreatePrimitive("Right Aux Barrel", PrimitiveType.Cylinder, turret,
+                    new Vector3(0.36f, 0.05f, 1.05f), new Vector3(0.18f, 0.78f, 0.18f), darkArmorMat,
                     Quaternion.Euler(90f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Left Armor Skirt", PrimitiveType.Cube, chassis,
+                    new Vector3(-1.35f, -0.05f, 0f), new Vector3(0.16f, 0.52f, 3.0f), bodyMaterial));
+                DisableCollider(CreatePrimitive("Right Armor Skirt", PrimitiveType.Cube, chassis,
+                    new Vector3(1.35f, -0.05f, 0f), new Vector3(0.16f, 0.52f, 3.0f), bodyMaterial));
             }
 
-            if (levelNumber >= 2)
+            // Level 3+: Turret Shoulder Missile Pods & Dorsal Plasma Fins
+            if (lvl >= 3)
             {
                 DisableCollider(CreatePrimitive("Left Missile Pod", PrimitiveType.Cube, turret,
-                    new Vector3(-0.88f, 0.32f, -0.05f), new Vector3(0.36f, 0.38f, 0.78f), bodyMat));
+                    new Vector3(-0.82f, 0.36f, -0.10f), new Vector3(0.42f, 0.48f, 0.75f), darkArmorMat,
+                    Quaternion.Euler(-10f, 0f, 0f)));
                 DisableCollider(CreatePrimitive("Right Missile Pod", PrimitiveType.Cube, turret,
-                    new Vector3(0.88f, 0.32f, -0.05f), new Vector3(0.36f, 0.38f, 0.78f), bodyMat));
+                    new Vector3(0.82f, 0.36f, -0.10f), new Vector3(0.42f, 0.48f, 0.75f), darkArmorMat,
+                    Quaternion.Euler(-10f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Dorsal Reactor Core", PrimitiveType.Sphere, chassis,
+                    new Vector3(0f, 0.35f, -1.25f), new Vector3(0.75f, 0.55f, 0.75f), accentMaterial));
             }
 
-            if (levelNumber >= 4)
+            // Level 4+: Sloped Front Siege Wedge & Outer Quad Barrels
+            if (lvl >= 4)
             {
-                DisableCollider(CreatePrimitive("Upper Artillery Pod L", PrimitiveType.Cylinder, turret,
-                    new Vector3(-0.62f, 0.62f, 0.25f), new Vector3(0.24f, 0.52f, 0.24f), accentMat,
-                    Quaternion.Euler(78f, 0f, 0f)));
-                DisableCollider(CreatePrimitive("Upper Artillery Pod R", PrimitiveType.Cylinder, turret,
-                    new Vector3(0.62f, 0.62f, 0.25f), new Vector3(0.24f, 0.52f, 0.24f), accentMat,
-                    Quaternion.Euler(78f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Front Siege Dozer Wedge", PrimitiveType.Cube, chassis,
+                    new Vector3(0f, -0.18f, 1.72f), new Vector3(2.55f, 0.48f, 0.42f), accentMaterial,
+                    Quaternion.Euler(24f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Outer Left Quad Barrel", PrimitiveType.Cylinder, turret,
+                    new Vector3(-0.62f, 0.08f, 0.92f), new Vector3(0.16f, 0.68f, 0.16f), accentMaterial,
+                    Quaternion.Euler(90f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Outer Right Quad Barrel", PrimitiveType.Cylinder, turret,
+                    new Vector3(0.62f, 0.08f, 0.92f), new Vector3(0.16f, 0.68f, 0.16f), accentMaterial,
+                    Quaternion.Euler(90f, 0f, 0f)));
+            }
+
+            // Level 5 (Omega Apex Mech): Golden Omega Halo Ring & Swept Ion Wings
+            if (lvl >= 5)
+            {
+                GameObject mechHalo = CreateTorus("Mech Omega Halo", turret, 1.25f, 0.065f, 24, goldTrimMat);
+                mechHalo.transform.localPosition = new Vector3(0f, 0.78f, -0.05f);
+                DisableCollider(CreatePrimitive("Left Ion Wing", PrimitiveType.Cube, chassis,
+                    new Vector3(-1.55f, 0.28f, -0.65f), new Vector3(0.95f, 0.14f, 0.65f), goldTrimMat,
+                    Quaternion.Euler(0f, -24f, 14f)));
+                DisableCollider(CreatePrimitive("Right Ion Wing", PrimitiveType.Cube, chassis,
+                    new Vector3(1.55f, 0.28f, -0.65f), new Vector3(0.95f, 0.14f, 0.65f), goldTrimMat,
+                    Quaternion.Euler(0f, 24f, -14f)));
             }
         }
 
