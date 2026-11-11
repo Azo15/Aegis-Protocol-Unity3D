@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
 using AegisProtocol.Core;
 
 namespace AegisProtocol.Systems
@@ -24,6 +25,13 @@ namespace AegisProtocol.Systems
         private float nextPlayerSearchTime;
         private bool hackActivated;
         private bool isCompleted;
+        private RectTransform worldBarCanvas;
+        private RectTransform worldBarFill;
+        private Image worldBarFillImage;
+        private Text worldBarLabel;
+        private Camera cachedCamera;
+        private static Sprite sharedWhiteSprite;
+        private static Font sharedFont;
 
         public event Action<float, float> OnTerminalProgressChanged;
         public event Action<SatelliteTerminalObjective> OnTerminalCompleted;
@@ -41,6 +49,29 @@ namespace AegisProtocol.Systems
         private void Awake()
         {
             ApplyVisualState(inactiveColor, false);
+        }
+
+        private void Start()
+        {
+            if (Application.isPlaying)
+            {
+                BuildWorldHackBar();
+                UpdateWorldHackBar();
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (worldBarCanvas == null)
+                return;
+
+            worldBarCanvas.position = transform.position + Vector3.up * 3.15f;
+            if (cachedCamera == null || !cachedCamera.isActiveAndEnabled)
+                cachedCamera = Camera.main;
+            if (cachedCamera != null)
+                worldBarCanvas.rotation = cachedCamera.transform.rotation;
+
+            UpdateWorldHackBar();
         }
 
         private void Update()
@@ -169,6 +200,123 @@ namespace AegisProtocol.Systems
             requiredHackDuration = Mathf.Max(0.1f, requiredHackDuration);
             if (string.IsNullOrWhiteSpace(terminalId))
                 terminalId = "Terminal_North";
+        }
+
+        private void BuildWorldHackBar()
+        {
+            if (sharedWhiteSprite == null)
+            {
+                Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+                {
+                    name = "SatelliteBar White Pixel",
+                    hideFlags = HideFlags.DontSave
+                };
+                tex.SetPixel(0, 0, Color.white);
+                tex.Apply();
+                sharedWhiteSprite = Sprite.Create(tex, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f));
+                sharedWhiteSprite.hideFlags = HideFlags.DontSave;
+            }
+            if (sharedFont == null)
+            {
+                try
+                {
+                    sharedFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                }
+                catch (ArgumentException)
+                {
+                    sharedFont = null;
+                }
+            }
+
+            GameObject canvasObj = new GameObject("SatelliteHackBarCanvas", typeof(RectTransform), typeof(Canvas));
+            canvasObj.transform.SetParent(transform, false);
+            Canvas canvas = canvasObj.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.sortingOrder = 30;
+
+            worldBarCanvas = canvasObj.GetComponent<RectTransform>();
+            worldBarCanvas.sizeDelta = new Vector2(260f, 38f);
+            worldBarCanvas.localScale = Vector3.one * 0.015f;
+
+            GameObject borderObj = new GameObject("Border", typeof(RectTransform), typeof(Image));
+            borderObj.transform.SetParent(worldBarCanvas, false);
+            RectTransform borderRect = borderObj.GetComponent<RectTransform>();
+            borderRect.anchorMin = Vector2.zero;
+            borderRect.anchorMax = Vector2.one;
+            borderRect.offsetMin = Vector2.zero;
+            borderRect.offsetMax = Vector2.zero;
+            Image borderImg = borderObj.GetComponent<Image>();
+            borderImg.sprite = sharedWhiteSprite;
+            borderImg.color = new Color(0.03f, 0.06f, 0.12f, 0.94f);
+
+            GameObject trackObj = new GameObject("Track", typeof(RectTransform), typeof(Image));
+            trackObj.transform.SetParent(borderRect, false);
+            RectTransform trackRect = trackObj.GetComponent<RectTransform>();
+            trackRect.anchorMin = Vector2.zero;
+            trackRect.anchorMax = Vector2.one;
+            trackRect.offsetMin = new Vector2(3.5f, 3.5f);
+            trackRect.offsetMax = new Vector2(-3.5f, -3.5f);
+            Image trackImg = trackObj.GetComponent<Image>();
+            trackImg.sprite = sharedWhiteSprite;
+            trackImg.color = new Color(0.18f, 0.10f, 0.05f, 0.92f);
+
+            GameObject fillObj = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillObj.transform.SetParent(trackRect, false);
+            worldBarFill = fillObj.GetComponent<RectTransform>();
+            worldBarFill.anchorMin = Vector2.zero;
+            worldBarFill.anchorMax = new Vector2(0f, 1f);
+            worldBarFill.offsetMin = Vector2.zero;
+            worldBarFill.offsetMax = Vector2.zero;
+            worldBarFillImage = fillObj.GetComponent<Image>();
+            worldBarFillImage.sprite = sharedWhiteSprite;
+            worldBarFillImage.color = activeColor;
+
+            GameObject textObj = new GameObject("Label", typeof(RectTransform), typeof(Text), typeof(Outline));
+            textObj.transform.SetParent(borderRect, false);
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            worldBarLabel = textObj.GetComponent<Text>();
+            worldBarLabel.font = sharedFont;
+            worldBarLabel.fontSize = 16;
+            worldBarLabel.fontStyle = FontStyle.Bold;
+            worldBarLabel.alignment = TextAnchor.MiddleCenter;
+            worldBarLabel.color = Color.white;
+            worldBarLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            worldBarLabel.verticalOverflow = VerticalWrapMode.Overflow;
+
+            Outline outline = textObj.GetComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.95f);
+            outline.effectDistance = new Vector2(1.2f, -1.2f);
+        }
+
+        private void UpdateWorldHackBar()
+        {
+            if (worldBarFill == null || worldBarLabel == null)
+                return;
+
+            float ratio = isCompleted ? 1f : ProgressNormalized;
+            worldBarFill.anchorMax = new Vector2(ratio, 1f);
+
+            if (isCompleted)
+            {
+                worldBarFillImage.color = completedColor;
+                worldBarLabel.text = "✓ UYDU AKTİF! (+500 Puan & +75 Kristal)";
+            }
+            else if (hackActivated)
+            {
+                worldBarFillImage.color = activeColor;
+                int pct = Mathf.RoundToInt(ratio * 100f);
+                worldBarLabel.text = $"📡 UYDU HACKLENİYOR: %{pct}";
+            }
+            else
+            {
+                worldBarFill.anchorMax = new Vector2(0.12f, 1f);
+                worldBarFillImage.color = inactiveColor;
+                worldBarLabel.text = "📡 UYDU TERMINALİ (Halkada Dur)";
+            }
         }
     }
 }
