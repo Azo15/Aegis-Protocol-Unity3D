@@ -24,8 +24,6 @@ namespace AegisProtocol.Systems
         private float remainingRepairCapacity;
         private int lastRepairWave;
         private bool ownsRuntimeConfig;
-        private LineRenderer activeBeamRenderer;
-        private float beamDisplayTimer;
 
         public DefenseStructureType StructureType => config != null ? config.StructureType : DefenseStructureType.AutoLaserTurret;
         public float FireRateMultiplier => fireRateMultiplier;
@@ -63,13 +61,6 @@ namespace AegisProtocol.Systems
                 return;
 
             float deltaTime = Time.deltaTime;
-            if (beamDisplayTimer > 0f)
-            {
-                beamDisplayTimer -= deltaTime;
-                if (beamDisplayTimer <= 0f && activeBeamRenderer != null)
-                    activeBeamRenderer.enabled = false;
-            }
-
             switch (config.StructureType)
             {
                 case DefenseStructureType.AutoLaserTurret:
@@ -184,21 +175,11 @@ namespace AegisProtocol.Systems
                 nearestTarget.TakeDamage(config.DamagePerShot, gameObject);
             }
 
-            Vector3 beamStart = turretHead != null ? turretHead.position + turretHead.forward * 0.85f : transform.position + Vector3.up * 1.6f;
-            Vector3 beamEnd = nearestTarget.transform.position + Vector3.up * 0.55f;
-            ShowTowerBeam(beamStart, beamEnd, new Color(0.15f, 0.95f, 1f, 1f), 0.14f);
-
             attackTimer = shotInterval;
         }
 
         private void UpdateEmpTower(float deltaTime)
         {
-            if (turretHead != null)
-            {
-                float pulseScale = 0.88f + Mathf.Sin(Time.time * 5.5f) * 0.10f;
-                turretHead.localScale = Vector3.one * pulseScale;
-            }
-
             if (!IsGameplayActive())
                 return;
 
@@ -207,7 +188,6 @@ namespace AegisProtocol.Systems
                 return;
 
             pulseTimer = config.EmpPulseInterval;
-            SpawnEmpPulseWave(transform.position + Vector3.up * 0.35f, config.EmpRadius);
             int count = Physics.OverlapSphereNonAlloc(
                 transform.position,
                 config.EmpRadius,
@@ -227,82 +207,17 @@ namespace AegisProtocol.Systems
 
         private void UpdateRepairStation(float deltaTime)
         {
-            if (turretHead != null)
-                turretHead.Rotate(Vector3.up, 72f * deltaTime, Space.Self);
-
             if (!IsGameplayActive() || remainingRepairCapacity <= 0f)
                 return;
 
             ResolveRepairTargets();
             float budget = Mathf.Min(config.RepairPerSecond * deltaTime, remainingRepairCapacity);
             float applied = HealTargetIfInRange(mechHealth, budget);
-            if (applied > 0f && mechHealth != null)
-            {
-                ShowTowerBeam(
-                    transform.position + Vector3.up * 2.05f,
-                    mechHealth.transform.position + Vector3.up * 0.8f,
-                    new Color(0.2f, 1f, 0.45f, 0.95f),
-                    0.12f);
-            }
             remainingRepairCapacity -= applied;
             float remainingBudget = Mathf.Min(config.RepairPerSecond * deltaTime, remainingRepairCapacity);
-            float reactorApplied = HealTargetIfInRange(reactorHealth, remainingBudget);
-            if (reactorApplied > 0f && applied <= 0f && reactorHealth != null)
-            {
-                ShowTowerBeam(
-                    transform.position + Vector3.up * 2.05f,
-                    reactorHealth.transform.position + Vector3.up * 2.2f,
-                    new Color(0.2f, 1f, 0.45f, 0.95f),
-                    0.12f);
-            }
-            remainingRepairCapacity -= reactorApplied;
+            applied = HealTargetIfInRange(reactorHealth, remainingBudget);
+            remainingRepairCapacity -= applied;
             remainingRepairCapacity = Mathf.Max(0f, remainingRepairCapacity);
-        }
-
-        private void ShowTowerBeam(Vector3 startPos, Vector3 endPos, Color beamColor, float duration)
-        {
-            if (!Application.isPlaying)
-                return;
-
-            if (activeBeamRenderer == null)
-            {
-                GameObject beamObj = new GameObject("TowerEnergyBeam");
-                beamObj.transform.SetParent(transform, false);
-                activeBeamRenderer = beamObj.AddComponent<LineRenderer>();
-                activeBeamRenderer.positionCount = 2;
-                activeBeamRenderer.startWidth = 0.16f;
-                activeBeamRenderer.endWidth = 0.08f;
-                activeBeamRenderer.useWorldSpace = true;
-                Shader shader = Shader.Find("Sprites/Default");
-                if (shader != null)
-                    activeBeamRenderer.material = new Material(shader);
-            }
-
-            activeBeamRenderer.startColor = beamColor;
-            activeBeamRenderer.endColor = beamColor;
-            activeBeamRenderer.SetPosition(0, startPos);
-            activeBeamRenderer.SetPosition(1, endPos);
-            activeBeamRenderer.enabled = true;
-            beamDisplayTimer = duration;
-        }
-
-        private static void SpawnEmpPulseWave(Vector3 center, float radius)
-        {
-            if (!Application.isPlaying)
-                return;
-
-            GameObject pulse = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            pulse.name = "EMP Shockwave Ring";
-            pulse.transform.position = center;
-            pulse.transform.localScale = new Vector3(1.2f, 0.04f, 1.2f);
-            DisableCollider(pulse);
-            Renderer r = pulse.GetComponent<Renderer>();
-            if (r != null)
-            {
-                r.material.color = new Color(0.25f, 0.75f, 1f, 0.65f);
-            }
-            TimedEffectDestroyer destroyer = pulse.AddComponent<TimedEffectDestroyer>();
-            destroyer.Initialize(0.38f, Mathf.Max(4f, radius * 1.55f));
         }
 
         private float HealTargetIfInRange(HealthComponent target, float amount)
@@ -358,84 +273,67 @@ namespace AegisProtocol.Systems
                 return;
             }
 
-            Color primaryColor = config != null ? config.VisualColor : new Color(0.15f, 0.9f, 1f);
+            Color primaryColor = config != null ? config.VisualColor : new Color(0.15f, 0.85f, 1f);
             Color darkMetal = new Color(0.16f, 0.22f, 0.30f);
+            Color brightGlow = primaryColor * 1.35f;
 
-            // Armored Pedestal Base
-            CreateTowerPart("PedestalBase", PrimitiveType.Cylinder, transform,
-                new Vector3(0f, 0.16f, 0f), new Vector3(2.1f, 0.16f, 2.1f), darkMetal);
-            CreateTowerPart("PedestalRim", PrimitiveType.Cylinder, transform,
-                new Vector3(0f, 0.36f, 0f), new Vector3(1.55f, 0.12f, 1.55f), primaryColor * 0.85f);
+            CreateTowerPart("StructureBase", PrimitiveType.Cylinder, transform,
+                new Vector3(0f, 0.18f, 0f), new Vector3(1.95f, 0.22f, 1.95f), darkMetal);
+            CreateTowerPart("BaseRim", PrimitiveType.Cylinder, transform,
+                new Vector3(0f, 0.38f, 0f), new Vector3(1.45f, 0.14f, 1.45f), primaryColor * 0.85f);
+            CreateTowerPart("StructureColumn", PrimitiveType.Cylinder, transform,
+                new Vector3(0f, 0.92f, 0f), new Vector3(0.68f, 0.65f, 0.68f), darkMetal);
 
-            for (int i = 0; i < 4; i++)
-            {
-                float angle = i * 90f;
-                Quaternion rot = Quaternion.Euler(0f, angle, 0f);
-                Vector3 pos = rot * new Vector3(0f, 0.32f, 0.85f);
-                CreateTowerPart($"BaseStrut_{i}", PrimitiveType.Cube, transform,
-                    pos, new Vector3(0.28f, 0.32f, 0.55f), darkMetal, rot);
-            }
+            GameObject headPivot = new GameObject("StructureHead");
+            headPivot.transform.SetParent(transform, false);
+            headPivot.transform.localPosition = new Vector3(0f, 1.65f, 0f);
+            turretHead = headPivot.transform;
 
-            DefenseStructureType type = config != null ? config.StructureType : DefenseStructureType.AutoLaserTurret;
-            switch (type)
+            switch (StructureType)
             {
                 case DefenseStructureType.AutoLaserTurret:
                 {
-                    CreateTowerPart("LaserColumn", PrimitiveType.Cylinder, transform,
-                        new Vector3(0f, 0.95f, 0f), new Vector3(0.62f, 0.58f, 0.62f), darkMetal);
-
-                    GameObject headPivot = new GameObject("LaserTurretHead");
-                    headPivot.transform.SetParent(transform, false);
-                    headPivot.transform.localPosition = new Vector3(0f, 1.62f, 0f);
-                    turretHead = headPivot.transform;
-
                     CreateTowerPart("TurretHousing", PrimitiveType.Cube, turretHead,
-                        Vector3.zero, new Vector3(1.05f, 0.58f, 1.25f), darkMetal);
-                    CreateTowerPart("TurretCoreDome", PrimitiveType.Sphere, turretHead,
-                        new Vector3(0f, 0.25f, -0.08f), new Vector3(0.75f, 0.45f, 0.85f), primaryColor);
+                        Vector3.zero, new Vector3(0.95f, 0.58f, 1.15f), primaryColor);
+                    CreateTowerPart("TurretDome", PrimitiveType.Sphere, turretHead,
+                        new Vector3(0f, 0.28f, -0.05f), new Vector3(0.76f, 0.42f, 0.82f), darkMetal);
                     CreateTowerPart("LeftLaserBarrel", PrimitiveType.Cylinder, turretHead,
-                        new Vector3(-0.28f, 0.04f, 0.88f), new Vector3(0.16f, 0.65f, 0.16f), primaryColor,
+                        new Vector3(-0.26f, 0.02f, 0.78f), new Vector3(0.16f, 0.58f, 0.16f), darkMetal,
                         Quaternion.Euler(90f, 0f, 0f));
                     CreateTowerPart("RightLaserBarrel", PrimitiveType.Cylinder, turretHead,
-                        new Vector3(0.28f, 0.04f, 0.88f), new Vector3(0.16f, 0.65f, 0.16f), primaryColor,
+                        new Vector3(0.26f, 0.02f, 0.78f), new Vector3(0.16f, 0.58f, 0.16f), darkMetal,
                         Quaternion.Euler(90f, 0f, 0f));
+                    CreateTowerPart("LaserLens", PrimitiveType.Sphere, turretHead,
+                        new Vector3(0f, 0.06f, 0.58f), new Vector3(0.32f, 0.24f, 0.22f), brightGlow);
                     break;
                 }
 
                 case DefenseStructureType.EmpSlowTower:
                 {
-                    CreateTowerPart("TeslaSpire", PrimitiveType.Cylinder, transform,
-                        new Vector3(0f, 1.25f, 0f), new Vector3(0.45f, 0.95f, 0.45f), darkMetal);
-                    CreateTowerPart("TeslaCoilRing1", PrimitiveType.Cylinder, transform,
-                        new Vector3(0f, 0.85f, 0f), new Vector3(1.35f, 0.07f, 1.35f), primaryColor);
-                    CreateTowerPart("TeslaCoilRing2", PrimitiveType.Cylinder, transform,
-                        new Vector3(0f, 1.35f, 0f), new Vector3(1.10f, 0.07f, 1.10f), primaryColor);
-                    CreateTowerPart("TeslaCoilRing3", PrimitiveType.Cylinder, transform,
-                        new Vector3(0f, 1.82f, 0f), new Vector3(0.85f, 0.07f, 0.85f), primaryColor);
-
-                    GameObject orb = CreateTowerPart("EmpPlasmaOrb", PrimitiveType.Sphere, transform,
-                        new Vector3(0f, 2.38f, 0f), new Vector3(0.88f, 0.88f, 0.88f), primaryColor);
-                    turretHead = orb.transform;
+                    for (int r = 0; r < 3; r++)
+                    {
+                        float y = -0.45f + r * 0.28f;
+                        float scaleXZ = 1.25f - r * 0.16f;
+                        CreateTowerPart($"TeslaCoilRing_{r + 1}", PrimitiveType.Cylinder, turretHead,
+                            new Vector3(0f, y, 0f), new Vector3(scaleXZ, 0.06f, scaleXZ), primaryColor);
+                    }
+                    CreateTowerPart("EmpOrbCore", PrimitiveType.Sphere, turretHead,
+                        new Vector3(0f, 0.36f, 0f), new Vector3(0.78f, 0.78f, 0.78f), brightGlow);
+                    CreateTowerPart("EmpProngX", PrimitiveType.Cube, turretHead,
+                        new Vector3(0f, 0.36f, 0f), new Vector3(1.35f, 0.12f, 0.14f), darkMetal);
+                    CreateTowerPart("EmpProngZ", PrimitiveType.Cube, turretHead,
+                        new Vector3(0f, 0.36f, 0f), new Vector3(0.14f, 0.12f, 1.35f), darkMetal);
                     break;
                 }
 
                 case DefenseStructureType.RepairStation:
                 {
-                    CreateTowerPart("MedColumnLeft", PrimitiveType.Cube, transform,
-                        new Vector3(-0.55f, 1.05f, 0f), new Vector3(0.26f, 1.35f, 0.26f), darkMetal);
-                    CreateTowerPart("MedColumnRight", PrimitiveType.Cube, transform,
-                        new Vector3(0.55f, 1.05f, 0f), new Vector3(0.26f, 1.35f, 0.26f), darkMetal);
-
-                    GameObject crossPivot = new GameObject("RepairCrossHead");
-                    crossPivot.transform.SetParent(transform, false);
-                    crossPivot.transform.localPosition = new Vector3(0f, 2.05f, 0f);
-                    turretHead = crossPivot.transform;
-
-                    Color healGreen = new Color(0.18f, 0.98f, 0.42f);
-                    CreateTowerPart("CrossVertical", PrimitiveType.Cube, turretHead,
-                        Vector3.zero, new Vector3(0.32f, 1.05f, 0.32f), healGreen);
-                    CreateTowerPart("CrossHorizontal", PrimitiveType.Cube, turretHead,
-                        Vector3.zero, new Vector3(1.05f, 0.32f, 0.32f), healGreen);
+                    CreateTowerPart("NanoHub", PrimitiveType.Cylinder, turretHead,
+                        new Vector3(0f, -0.15f, 0f), new Vector3(1.05f, 0.24f, 1.05f), darkMetal);
+                    CreateTowerPart("MedCrossH", PrimitiveType.Cube, turretHead,
+                        new Vector3(0f, 0.38f, 0f), new Vector3(1.15f, 0.30f, 0.30f), brightGlow);
+                    CreateTowerPart("MedCrossV", PrimitiveType.Cube, turretHead,
+                        new Vector3(0f, 0.38f, 0f), new Vector3(0.30f, 1.15f, 0.30f), brightGlow);
                     break;
                 }
             }
