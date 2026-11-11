@@ -124,10 +124,34 @@ namespace AegisProtocol.UI
                 displayedTrailRatio = ratio;
                 if (fillImage != null)
                     fillImage.color = new Color(0.25f, 1f, 0.55f, 1f);
+
+                int healedAmount = Mathf.RoundToInt(currentHealth - previousHealth);
+                if (healedAmount >= 15)
+                {
+                    FloatingCombatText.SpawnPopup(
+                        transform.position + Vector3.up * (worldHeightOffset + 0.45f),
+                        $"+{healedAmount} CAN",
+                        new Color(0.25f, 1f, 0.48f, 1f),
+                        23);
+                }
             }
             else
             {
                 UpdateFillColor(ratio);
+                int dmgAmount = Mathf.RoundToInt(previousHealth - currentHealth);
+                if (dmgAmount >= 2)
+                {
+                    bool isBigHit = dmgAmount >= 55;
+                    Color dmgColor = source.Role == HealthRole.PlayerMech || source.Role == HealthRole.Reactor
+                        ? new Color(1f, 0.28f, 0.22f, 1f)
+                        : (isBigHit ? new Color(1f, 0.85f, 0.15f, 1f) : new Color(1f, 0.96f, 0.88f, 1f));
+                    string text = isBigHit ? $"-{dmgAmount} KRİTİK!" : $"-{dmgAmount}";
+                    FloatingCombatText.SpawnPopup(
+                        transform.position + Vector3.up * (worldHeightOffset + 0.35f),
+                        text,
+                        dmgColor,
+                        isBigHit ? 24 : 20);
+                }
             }
 
             UpdateLabelText();
