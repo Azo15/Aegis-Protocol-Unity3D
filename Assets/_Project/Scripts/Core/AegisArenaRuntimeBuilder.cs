@@ -364,11 +364,17 @@ namespace AegisProtocol.Core
             Material darkArmorMat = CreateMaterial(new Color(0.14f, 0.20f, 0.28f), new Color(0.04f, 0.08f, 0.12f));
             Material goldTrimMat = CreateMaterial(new Color(1f, 0.82f, 0.22f), new Color(1.6f, 1.15f, 0.25f));
 
-            // Base Mk-I details: front optic visor & command cupola
+            // Base Mk-I details: front optic visor, command cupola & twin rear thruster nozzles
             DisableCollider(CreatePrimitive("Turret Optic Visor", PrimitiveType.Cube, turret,
                 new Vector3(0f, 0.22f, 0.68f), new Vector3(0.75f, 0.18f, 0.24f), accentMaterial));
             DisableCollider(CreatePrimitive("Command Cupola", PrimitiveType.Cylinder, turret,
                 new Vector3(0f, 0.52f, -0.15f), new Vector3(0.65f, 0.12f, 0.65f), darkArmorMat));
+            DisableCollider(CreatePrimitive("Left Thruster Nozzle", PrimitiveType.Cylinder, chassis,
+                new Vector3(-0.62f, -0.08f, -1.68f), new Vector3(0.32f, 0.22f, 0.32f), accentMaterial,
+                Quaternion.Euler(90f, 0f, 0f)));
+            DisableCollider(CreatePrimitive("Right Thruster Nozzle", PrimitiveType.Cylinder, chassis,
+                new Vector3(0.62f, -0.08f, -1.68f), new Vector3(0.32f, 0.22f, 0.32f), accentMaterial,
+                Quaternion.Euler(90f, 0f, 0f)));
 
             // Level 2+: Twin Side Barrels & Side Track Skirts
             if (lvl >= 2)

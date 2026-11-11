@@ -31,6 +31,9 @@ namespace AegisProtocol.Combat
         private float dashCooldownRemaining;
         private float moveSpeedMultiplier = 1f;
         private bool isDashing;
+        private TrailRenderer leftDashTrail;
+        private TrailRenderer rightDashTrail;
+        private Light dashBoosterLight;
 
         public event Action OnDashStarted;
         /// <summary>Cooldown fraction: 1 means cooling down, 0 means ready.</summary>
@@ -101,22 +104,9 @@ namespace AegisProtocol.Combat
                 return;
 
             PlayerInputSnapshot input = inputReader.CurrentSnapshot;
-            if (aimCamera == null)
-                aimCamera = Camera.main;
-
-            if (aimCamera != null)
-            {
-                Vector3 camForward = aimCamera.transform.forward;
-                camForward.y = 0f;
-                if (camForward.sqrMagnitude > 0.0001f)
-                    RotateChassis(camForward.normalized, Time.deltaTime);
-            }
-            else
-            {
-                Vector3 moveDirection = GetCameraRelativeMoveDirection(input.MoveVector);
-                if (moveDirection.sqrMagnitude > 0.0001f)
-                    RotateChassis(moveDirection.normalized, Time.deltaTime);
-            }
+            Vector3 moveDirection = GetCameraRelativeMoveDirection(input.MoveVector);
+            if (moveDirection.sqrMagnitude > 0.0001f)
+                RotateChassis(moveDirection.normalized, Time.deltaTime);
 
             UpdateAim(input.PointerScreenPosition);
 
@@ -170,6 +160,7 @@ namespace AegisProtocol.Combat
                 {
                     isDashing = false;
                     currentVelocity = velocityBeforeDash;
+                    SetDashBoostersActive(false);
                 }
                 return;
             }
@@ -353,7 +344,7 @@ namespace AegisProtocol.Combat
                     camRight = Vector3.right;
                 camRight.Normalize();
 
-                return camRight * (moveInput.x * 0.45f) + camForward * moveInput.y;
+                return camRight * moveInput.x + camForward * moveInput.y;
             }
 
             return new Vector3(moveInput.x, 0f, moveInput.y);
@@ -381,8 +372,62 @@ namespace AegisProtocol.Combat
             dashTimeRemaining = movementConfig.DashDuration;
             dashCooldownRemaining = movementConfig.DashCooldown;
             isDashing = true;
+            SetDashBoostersActive(true);
             OnDashStarted?.Invoke();
             PublishDashCooldown();
+        }
+
+        private void SetDashBoostersActive(bool active)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            EnsureDashBoostersBuilt();
+            if (leftDashTrail != null)
+                leftDashTrail.emitting = active;
+            if (rightDashTrail != null)
+                rightDashTrail.emitting = active;
+            if (dashBoosterLight != null)
+                dashBoosterLight.enabled = active;
+        }
+
+        private void EnsureDashBoostersBuilt()
+        {
+            if (leftDashTrail != null && rightDashTrail != null)
+                return;
+
+            Transform parentBasis = chassisTransform != null ? chassisTransform : transform;
+            leftDashTrail = CreateBoosterTrail("LeftDashBoosterTrail", parentBasis, new Vector3(-0.62f, 0.05f, -1.75f));
+            rightDashTrail = CreateBoosterTrail("RightDashBoosterTrail", parentBasis, new Vector3(0.62f, 0.05f, -1.75f));
+
+            GameObject lightObj = new GameObject("DashBoosterLight");
+            lightObj.transform.SetParent(parentBasis, false);
+            lightObj.transform.localPosition = new Vector3(0f, 0.15f, -1.85f);
+            dashBoosterLight = lightObj.AddComponent<Light>();
+            dashBoosterLight.type = LightType.Point;
+            dashBoosterLight.color = new Color(0.15f, 0.92f, 1f, 1f);
+            dashBoosterLight.intensity = 7f;
+            dashBoosterLight.range = 7.5f;
+            dashBoosterLight.enabled = false;
+        }
+
+        private static TrailRenderer CreateBoosterTrail(string trailName, Transform parent, Vector3 localPos)
+        {
+            GameObject trailObj = new GameObject(trailName);
+            trailObj.transform.SetParent(parent, false);
+            trailObj.transform.localPosition = localPos;
+            TrailRenderer tr = trailObj.AddComponent<TrailRenderer>();
+            tr.time = 0.28f;
+            tr.startWidth = 0.36f;
+            tr.endWidth = 0.02f;
+            tr.minVertexDistance = 0.05f;
+            tr.emitting = false;
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                tr.material = new Material(shader);
+            tr.startColor = new Color(0.2f, 0.95f, 1f, 0.95f);
+            tr.endColor = new Color(0.1f, 0.45f, 1f, 0f);
+            return tr;
         }
 
         private void UpdateDashCooldown(float deltaTime)
