@@ -224,18 +224,19 @@ namespace AegisProtocol.UI
             int max = Mathf.CeilToInt(health.MaxHealth);
             int pct = Mathf.Clamp(Mathf.RoundToInt(health.HealthRatio * 100f), 0, 100);
 
+            int stageTier = GameManager.Instance != null ? Mathf.Clamp(GameManager.Instance.CurrentLevel, 1, 5) : 1;
+
             switch (health.Role)
             {
                 case HealthRole.PlayerMech:
                     labelText.text = healFlashRemaining > 0f
                         ? $"✚ CAN DOLDU! ({cur}/{max})"
-                        : $"TANK CANI: {cur}/{max}";
+                        : $"TANK MK-{stageTier}: {cur}/{max}";
                     break;
                 case HealthRole.Reactor:
                     labelText.text = $"★ KALE CANI: {cur} / {max}  (%{pct}) ★";
                     break;
                 default:
-                    int stageTier = GameManager.Instance != null ? Mathf.Clamp(GameManager.Instance.CurrentLevel, 1, 5) : 1;
                     labelText.text = health.MaxHealth >= 800f
                         ? $"☠ MK-{stageTier} BOSS: {cur}/{max}"
                         : $"MK-{stageTier} • {cur}/{max}";

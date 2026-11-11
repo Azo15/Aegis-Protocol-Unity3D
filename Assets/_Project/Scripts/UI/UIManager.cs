@@ -607,7 +607,8 @@ namespace AegisProtocol.UI
             if (hudPanel == null || !hudPanel.activeSelf)
                 return;
 
-            SetHealthBar(mechHealth, mechHealthBar, mechHealthText, "ROBOT CANI (MECH)");
+            int currentLvl = gameManager != null ? Mathf.Clamp(gameManager.CurrentLevel, 1, 5) : 1;
+            SetHealthBar(mechHealth, mechHealthBar, mechHealthText, $"TANK MK-{currentLvl} CANI");
             SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "KALE CANI (REAKTÖR)");
             if (cameraRig != null)
             {
