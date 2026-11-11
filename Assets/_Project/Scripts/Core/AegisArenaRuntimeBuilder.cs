@@ -428,6 +428,9 @@ namespace AegisProtocol.Core
                 int lvl = Mathf.Clamp(levelData.LevelNumber, 1, 5);
                 Color stageColor = GetStageEnemyColor(types[i], lvl, colors[i]);
                 float stageScale = scale[i] * (1f + (lvl - 1) * 0.08f);
+                float stageDamage = damage[i] * (1f + (lvl - 1) * 0.16f);
+                float stageCooldown = cooldown[i] * Mathf.Max(0.62f, 1f - (lvl - 1) * 0.08f);
+                int stageCrystals = crystals[i] + (lvl - 1) * 5;
 
                 EnemyArchetypeConfig config = ScriptableObject.CreateInstance<EnemyArchetypeConfig>();
                 config.name = types[i] + " Runtime Config";
@@ -436,11 +439,11 @@ namespace AegisProtocol.Core
                     types[i],
                     hp[i] * levelData.EnemyHealthMultiplier,
                     speed[i] * levelData.EnemySpeedMultiplier,
-                    range[i],
-                    damage[i],
-                    cooldown[i],
+                    range[i] + (lvl - 1) * 0.6f,
+                    stageDamage,
+                    stageCooldown,
                     score[i] * levelData.LevelNumber,
-                    crystals[i],
+                    stageCrystals,
                     stageScale,
                     stageColor);
                 if (types[i] == EnemyType.RangedStriker || types[i] == EnemyType.OverlordTitanBoss)

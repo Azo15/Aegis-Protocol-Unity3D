@@ -345,29 +345,69 @@ namespace AegisProtocol.Systems
             int bonus = GameManager.Instance != null
                 ? GameManager.Instance.CurrentLevelData.ExtraEnemiesPerGroup
                 : 0;
+            int level = GameManager.Instance != null
+                ? Mathf.Clamp(GameManager.Instance.CurrentLevel, 1, 5)
+                : 1;
+
             switch (waveNumber)
             {
                 case 1:
-                    return new[] { Group(EnemyType.ScoutDrone, 8 + bonus, 0) };
+                    if (level == 1)
+                        return new[] { Group(EnemyType.ScoutDrone, 8 + bonus, 0) };
+                    if (level == 2)
+                        return new[] { Group(EnemyType.ScoutDrone, 6 + bonus, 1), Group(EnemyType.RangedStriker, 3, 2) };
+                    if (level == 3)
+                        return new[] { Group(EnemyType.ScoutDrone, 6 + bonus, 0), Group(EnemyType.RangedStriker, 4, 1), Group(EnemyType.KamikazeDrone, 3, 2) };
+                    if (level == 4)
+                        return new[] { Group(EnemyType.HeavySiegeMech, 2, 0), Group(EnemyType.RangedStriker, 5 + bonus, 1), Group(EnemyType.KamikazeDrone, 4, 2) };
+                    return new[] { Group(EnemyType.HeavySiegeMech, 3, 0), Group(EnemyType.RangedStriker, 6 + bonus, 1), Group(EnemyType.KamikazeDrone, 6, 2) };
+
                 case 2:
-                    return new[] { Group(EnemyType.ScoutDrone, 6 + bonus, 1), Group(EnemyType.RangedStriker, 4 + bonus, 2) };
+                    if (level <= 2)
+                        return new[] { Group(EnemyType.ScoutDrone, 6 + bonus, 1), Group(EnemyType.RangedStriker, 4 + bonus, 2) };
+                    return new[]
+                    {
+                        Group(EnemyType.HeavySiegeMech, level - 1, 0),
+                        Group(EnemyType.RangedStriker, 5 + bonus, 2),
+                        Group(EnemyType.KamikazeDrone, 4 + bonus, 1)
+                    };
+
                 case 3:
-                    return new[] { Group(EnemyType.KamikazeDrone, 8 + bonus, 1), Group(EnemyType.RangedStriker, 6 + bonus, 2) };
+                    if (level < 5)
+                    {
+                        return new[]
+                        {
+                            Group(EnemyType.KamikazeDrone, 8 + bonus, 1),
+                            Group(EnemyType.RangedStriker, 6 + bonus, 2),
+                            Group(EnemyType.HeavySiegeMech, Mathf.Max(1, level - 1), 0)
+                        };
+                    }
+                    return new[]
+                    {
+                        Group(EnemyType.OverlordTitanBoss, 1, 0),
+                        Group(EnemyType.KamikazeDrone, 8 + bonus, 1),
+                        Group(EnemyType.RangedStriker, 6 + bonus, 2)
+                    };
+
                 case 4:
                     return new[]
                     {
-                        Group(EnemyType.HeavySiegeMech, 3 + Mathf.Max(0, bonus / 2), 0),
+                        Group(EnemyType.HeavySiegeMech, 2 + level, 0),
                         Group(EnemyType.ScoutDrone, 5 + bonus, 0),
                         Group(EnemyType.RangedStriker, 4 + bonus, 2),
                         Group(EnemyType.KamikazeDrone, 3 + bonus, 1)
                     };
+
                 case 5:
+                    int bossCount = level >= 4 ? 2 : 1;
                     return new[]
                     {
-                        Group(EnemyType.OverlordTitanBoss, 1, 0),
+                        Group(EnemyType.OverlordTitanBoss, bossCount, 0),
+                        Group(EnemyType.HeavySiegeMech, Mathf.Max(1, level - 1), 0),
                         Group(EnemyType.ScoutDrone, 8 + bonus, 1),
                         Group(EnemyType.RangedStriker, 6 + bonus, 2)
                     };
+
                 default:
                     return Array.Empty<WaveSpawnGroup>();
             }
