@@ -72,12 +72,22 @@ namespace AegisProtocol.UI
 
             UpdateDimensionsForRole();
 
-            float parentScale = Mathf.Max(0.1f, transform.lossyScale.x);
-            canvasRect.position = transform.position + Vector3.up * worldHeightOffset;
-            canvasRect.localScale = Vector3.one * (baseWorldScale / parentScale);
-
             if (cachedCamera == null || !cachedCamera.isActiveAndEnabled)
                 cachedCamera = Camera.main;
+
+            float parentScale = Mathf.Max(0.1f, transform.lossyScale.x);
+            Vector3 barWorldPos = transform.position + Vector3.up * worldHeightOffset;
+            if (health.Role == HealthRole.Reactor && cachedCamera != null)
+            {
+                Vector3 toCam = cachedCamera.transform.position - transform.position;
+                toCam.y = 0f;
+                if (toCam.sqrMagnitude > 0.001f)
+                    barWorldPos += toCam.normalized * 3.85f;
+            }
+
+            canvasRect.position = barWorldPos;
+            canvasRect.localScale = Vector3.one * (baseWorldScale / parentScale);
+
             if (cachedCamera != null)
                 canvasRect.rotation = cachedCamera.transform.rotation;
 
@@ -147,10 +157,10 @@ namespace AegisProtocol.UI
             switch (health.Role)
             {
                 case HealthRole.Reactor:
-                    worldHeightOffset = 2.65f;
-                    baseWorldScale = 0.024f;
+                    worldHeightOffset = 3.65f;
+                    baseWorldScale = 0.025f;
                     if (canvasRect != null)
-                        canvasRect.sizeDelta = new Vector2(340f, 52f);
+                        canvasRect.sizeDelta = new Vector2(350f, 54f);
                     break;
                 case HealthRole.PlayerMech:
                     worldHeightOffset = 2.55f;
@@ -225,9 +235,10 @@ namespace AegisProtocol.UI
                     labelText.text = $"★ KALE CANI: {cur} / {max}  (%{pct}) ★";
                     break;
                 default:
+                    int stageTier = GameManager.Instance != null ? Mathf.Clamp(GameManager.Instance.CurrentLevel, 1, 5) : 1;
                     labelText.text = health.MaxHealth >= 800f
-                        ? $"☠ BOSS: {cur}/{max}"
-                        : $"{cur}/{max}";
+                        ? $"☠ MK-{stageTier} BOSS: {cur}/{max}"
+                        : $"MK-{stageTier} • {cur}/{max}";
                     break;
             }
         }

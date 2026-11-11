@@ -326,15 +326,36 @@ namespace AegisProtocol.UI
                 return;
 
             SectorLevelData data = gameManager != null ? gameManager.CurrentLevelData : SectorLevelConfig.GetLevel(1);
+            string enemyTierDesc = GetStageEnemyDescription(data.LevelNumber);
             briefingTitleText.text = $"{data.SectorName} — {data.Subtitle}";
             briefingDetailsText.text =
                 $"★ {data.WeaponEvolutionTitle}\n" +
-                $"★ {data.SpecialPerkTitle}\n\n" +
+                $"★ {data.SpecialPerkTitle}\n" +
+                $"☠ {enemyTierDesc}\n\n" +
                 "NASIL KAZANIRSIN? (ÇOK BASİT):\n" +
                 "• 5 Dalgadaki tüm düşmanları temizle -> SEVİYEYİ KAZANIRSIN!\n" +
                 "• (Bonus) Turuncu Uydu Halkalarında durursan +75 Kristal, +150 Can ve +500 Puan kazanırsın!\n\n" +
                 "NASIL KAYBEDERSİN?:\n" +
-                "• Kendi Robotunun Canı (MECH HP) VEYA Ortadaki Mavi Reaktörün Canı (REAKTÖR HP) 0'a düşerse kaybedersin!";
+                "• Kendi Robotunun Canı (MECH HP) VEYA Ortadaki Kalenin Canı (KALE HP) 0'a düşerse kaybedersin!";
+        }
+
+        private static string GetStageEnemyDescription(int levelNumber)
+        {
+            switch (levelNumber)
+            {
+                case 1:
+                    return "Bu Seviyenin Düşmanları: MK-I Kızıl Keşif Dronları & Öncü Birlikler";
+                case 2:
+                    return "Bu Seviyenin Düşmanları: MK-II Altın Zırhlı & Çift Namlulu Çöl Kuşatmacıları";
+                case 3:
+                    return "Bu Seviyenin Düşmanları: MK-III Mor Plazma Halkalı & Reaktör Kuleli Siber Lejyon";
+                case 4:
+                    return "Bu Seviyenin Düşmanları: MK-IV Zümrüt Kuşatma Juggernautları & Omuz Füzeli Robotlar (Çift Boss!)";
+                case 5:
+                    return "Bu Seviyenin Düşmanları: MK-V OMEGA KIYAMET ORDUSU — İyon Sütunlu & Taç Halkalı Elit Zırhlılar!";
+                default:
+                    return "Bu Seviyenin Düşmanları: Zırhlı Mekanik Birlikler";
+            }
         }
 
         private void BuildHowToPlay(Transform parent)
