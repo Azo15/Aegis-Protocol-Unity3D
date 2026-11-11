@@ -70,6 +70,9 @@ namespace AegisProtocol.UI
         private Text crystalText;
         private Text cameraModeText;
         private Text cockpitCrosshairText;
+        private Text waveAlertText;
+        private int lastAnnouncedWave;
+        private float waveAlertTimer;
         private Text[] upgradeCardTexts = Array.Empty<Text>();
         private Slider mechHealthBar;
         private Slider reactorHealthBar;
@@ -576,6 +579,16 @@ namespace AegisProtocol.UI
 
             TacticalMinimapHUD minimap = parent.gameObject.AddComponent<TacticalMinimapHUD>();
             minimap.BuildRadar(parent, runtimeWhiteSprite, runtimeFont);
+
+            waveAlertText = CreateHudText(
+                parent,
+                string.Empty,
+                new Vector2(0f, -88f),
+                new Vector2(0.5f, 1f),
+                25,
+                TextAnchor.UpperCenter);
+            waveAlertText.GetComponent<RectTransform>().sizeDelta = new Vector2(920f, 54f);
+            waveAlertText.gameObject.SetActive(false);
         }
 
         private void ResolveSystems()
@@ -625,8 +638,46 @@ namespace AegisProtocol.UI
             }
             if (gameManager != null)
             {
+                int currentWave = Mathf.Max(1, gameManager.CurrentWave);
+                if (currentWave != lastAnnouncedWave && gameManager.CurrentState == GameState.WaveActive)
+                {
+                    lastAnnouncedWave = currentWave;
+                    waveAlertTimer = 3.8f;
+                    if (waveAlertText != null)
+                    {
+                        waveAlertText.gameObject.SetActive(true);
+                        if (currentWave == 5)
+                        {
+                            waveAlertText.color = new Color(1f, 0.25f, 0.2f, 1f);
+                            waveAlertText.text = "⚠ DİKKAT: SON DALGA (5/5) — OVERLORD TITAN BOSS SALDIRIYOR! ⚠";
+                        }
+                        else if (currentWave == 3)
+                        {
+                            waveAlertText.color = new Color(1f, 0.78f, 0.2f, 1f);
+                            waveAlertText.text = "⚡ DALGA 3/5: GECE FIRTINASI & KAMİKAZE BASKINI BAŞLADI! ⚡";
+                        }
+                        else
+                        {
+                            waveAlertText.color = new Color(0.25f, 0.95f, 1f, 1f);
+                            waveAlertText.text = $"⚔ DALGA {currentWave}/5 BAŞLADI — KALEYİ SAVUN! ⚔";
+                        }
+                    }
+                }
+
+                if (waveAlertTimer > 0f && waveAlertText != null)
+                {
+                    waveAlertTimer = Mathf.Max(0f, waveAlertTimer - Time.deltaTime);
+                    if (lastAnnouncedWave == 5)
+                    {
+                        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 9f);
+                        waveAlertText.color = Color.Lerp(new Color(1f, 0.2f, 0.15f, 1f), new Color(1f, 0.92f, 0.2f, 1f), pulse);
+                    }
+                    if (waveAlertTimer <= 0f)
+                        waveAlertText.gameObject.SetActive(false);
+                }
+
                 int remainingEnemies = waveSpawner != null ? waveSpawner.ActiveEnemyCount : 0;
-                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {Mathf.Max(1, gameManager.CurrentWave)}/5 (5. Dalga Bitince Kazanırsın)";
+                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {currentWave}/5 (5. Dalga Bitince Kazanırsın)";
                 timerText.text = $"KALAN DÜŞMAN: {remainingEnemies}   |   SÜRE: {FormatTime(gameManager.ElapsedSeconds)}";
                 scoreText.text = $"TOPLAM SKOR: {gameManager.TotalScore:N0}";
                 terminalText.text = $"BONUS UYDU: {gameManager.CompletedTerminals}/3 (+75 Kristal & +Can)";
