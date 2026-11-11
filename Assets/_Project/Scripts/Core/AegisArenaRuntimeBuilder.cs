@@ -425,6 +425,10 @@ namespace AegisProtocol.Core
             EnemyPrefabDefinition[] definitions = new EnemyPrefabDefinition[types.Length];
             for (int i = 0; i < types.Length; i++)
             {
+                int lvl = Mathf.Clamp(levelData.LevelNumber, 1, 5);
+                Color stageColor = GetStageEnemyColor(types[i], lvl, colors[i]);
+                float stageScale = scale[i] * (1f + (lvl - 1) * 0.08f);
+
                 EnemyArchetypeConfig config = ScriptableObject.CreateInstance<EnemyArchetypeConfig>();
                 config.name = types[i] + " Runtime Config";
                 runtimeConfigs.Add(config);
@@ -437,8 +441,8 @@ namespace AegisProtocol.Core
                     cooldown[i],
                     score[i] * levelData.LevelNumber,
                     crystals[i],
-                    scale[i],
-                    colors[i]);
+                    stageScale,
+                    stageColor);
                 if (types[i] == EnemyType.RangedStriker || types[i] == EnemyType.OverlordTitanBoss)
                     config.SetRuntimeProjectilePrefab(energyProjectile);
 
@@ -451,7 +455,7 @@ namespace AegisProtocol.Core
                 enemy.AddComponent<HealthComponent>();
                 EnemyAIController ai = enemy.AddComponent<EnemyAIController>();
                 ai.ConfigureRuntime(config, crystalPrefab);
-                BuildEnemyVisualModel(enemy.transform, types[i], colors[i]);
+                BuildEnemyVisualModel(enemy.transform, types[i], stageColor, lvl);
 
                 definitions[i] = new EnemyPrefabDefinition
                 {
@@ -464,11 +468,41 @@ namespace AegisProtocol.Core
             return definitions;
         }
 
-        private void BuildEnemyVisualModel(Transform parent, EnemyType type, Color primaryColor)
+        private static Color GetStageEnemyColor(EnemyType type, int levelNumber, Color fallback)
         {
-            Material hullMat = CreateMaterial(primaryColor, primaryColor * 1.15f);
-            Material darkMetalMat = CreateMaterial(new Color(0.18f, 0.22f, 0.28f), new Color(0.05f, 0.07f, 0.1f));
-            Material eyeGlowMat = CreateMaterial(new Color(1f, 0.9f, 0.2f), new Color(2.2f, 1.6f, 0.2f));
+            float typeShift = ((int)type) * 0.06f;
+            switch (levelNumber)
+            {
+                case 1:
+                    return fallback;
+                case 2:
+                    // Sector 2 Desert Raiders: Scorched Gold & Bronze-Amber
+                    return Color.Lerp(new Color(1f, 0.68f, 0.12f), new Color(0.95f, 0.35f, 0.08f), typeShift);
+                case 3:
+                    // Sector 3 Gamma Crater: Cyber Neon-Violet & Electric Magenta
+                    return Color.Lerp(new Color(0.72f, 0.18f, 1f), new Color(1f, 0.15f, 0.68f), typeShift);
+                case 4:
+                    // Sector 4 Delta Fortress: Toxic Emerald & Acid-Lime Siege Armor
+                    return Color.Lerp(new Color(0.15f, 0.95f, 0.38f), new Color(0.55f, 1f, 0.12f), typeShift);
+                case 5:
+                    // Sector 5 Omega Core: Blazing Crimson-Gold Apex War Machines
+                    return Color.Lerp(new Color(1f, 0.12f, 0.18f), new Color(1f, 0.82f, 0.15f), typeShift);
+                default:
+                    return fallback;
+            }
+        }
+
+        private void BuildEnemyVisualModel(Transform parent, EnemyType type, Color primaryColor, int levelNumber = 1)
+        {
+            Material hullMat = CreateMaterial(primaryColor, primaryColor * (1.05f + levelNumber * 0.14f));
+            Color metalTint = levelNumber >= 5
+                ? new Color(0.10f, 0.08f, 0.14f)
+                : new Color(0.18f, 0.22f, 0.28f);
+            Material darkMetalMat = CreateMaterial(metalTint, primaryColor * (0.08f * levelNumber));
+            Color eyeColor = levelNumber == 3
+                ? new Color(0.25f, 1f, 1f)
+                : (levelNumber >= 5 ? new Color(1f, 0.95f, 0.25f) : new Color(1f, 0.85f, 0.2f));
+            Material eyeGlowMat = CreateMaterial(eyeColor, eyeColor * (1.8f + levelNumber * 0.25f));
 
             switch (type)
             {
@@ -583,6 +617,82 @@ namespace AegisProtocol.Core
                         new Vector3(0f, 1.50f, 0.40f), new Vector3(0.58f, 0.18f, 0.12f), eyeGlowMat));
                     break;
                 }
+            }
+
+            BuildStageTierEvolution(parent, type, levelNumber, hullMat, darkMetalMat, eyeGlowMat);
+        }
+
+        private void BuildStageTierEvolution(
+            Transform parent,
+            EnemyType type,
+            int levelNumber,
+            Material hullMat,
+            Material darkMetalMat,
+            Material glowMat)
+        {
+            if (levelNumber <= 1)
+                return;
+
+            float heightBase = type == EnemyType.OverlordTitanBoss ? 1.05f
+                : (type == EnemyType.HeavySiegeMech ? 0.82f : 0.48f);
+            float widthSpread = type == EnemyType.OverlordTitanBoss ? 1.15f
+                : (type == EnemyType.HeavySiegeMech ? 0.92f : 0.72f);
+
+            // Stage 2+: Angled Side Shield Plates & Twin Heavy Barrels
+            if (levelNumber >= 2)
+            {
+                DisableCollider(CreatePrimitive("Mk2 Left Shield Plate", PrimitiveType.Cube, parent,
+                    new Vector3(-widthSpread, heightBase, 0.05f), new Vector3(0.16f, 0.52f, 0.95f), hullMat,
+                    Quaternion.Euler(0f, 0f, 16f)));
+                DisableCollider(CreatePrimitive("Mk2 Right Shield Plate", PrimitiveType.Cube, parent,
+                    new Vector3(widthSpread, heightBase, 0.05f), new Vector3(0.16f, 0.52f, 0.95f), hullMat,
+                    Quaternion.Euler(0f, 0f, -16f)));
+                DisableCollider(CreatePrimitive("Mk2 Left Twin Barrel", PrimitiveType.Cylinder, parent,
+                    new Vector3(-widthSpread * 0.62f, heightBase + 0.12f, 0.78f), new Vector3(0.14f, 0.48f, 0.14f), darkMetalMat,
+                    Quaternion.Euler(90f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Mk2 Right Twin Barrel", PrimitiveType.Cylinder, parent,
+                    new Vector3(widthSpread * 0.62f, heightBase + 0.12f, 0.78f), new Vector3(0.14f, 0.48f, 0.14f), darkMetalMat,
+                    Quaternion.Euler(90f, 0f, 0f)));
+            }
+
+            // Stage 3+: Dorsal Plasma Reactor Spire & Floating Energy Halo Ring
+            if (levelNumber >= 3)
+            {
+                DisableCollider(CreatePrimitive("Mk3 Dorsal Plasma Spire", PrimitiveType.Cylinder, parent,
+                    new Vector3(0f, heightBase + 0.52f, -0.25f), new Vector3(0.22f, 0.42f, 0.22f), darkMetalMat));
+                DisableCollider(CreatePrimitive("Mk3 Spire Core Orb", PrimitiveType.Sphere, parent,
+                    new Vector3(0f, heightBase + 0.95f, -0.25f), new Vector3(0.38f, 0.38f, 0.38f), glowMat));
+                GameObject halo = CreateTorus("Mk3 Plasma Halo", parent, widthSpread * 1.05f, 0.055f, 18, glowMat);
+                halo.transform.localPosition = new Vector3(0f, heightBase + 0.15f, 0f);
+            }
+
+            // Stage 4+: Shoulder Missile Pods & Spiked Siege Ram Bumper
+            if (levelNumber >= 4)
+            {
+                DisableCollider(CreatePrimitive("Mk4 Left Missile Rack", PrimitiveType.Cube, parent,
+                    new Vector3(-widthSpread * 0.85f, heightBase + 0.58f, -0.12f), new Vector3(0.36f, 0.44f, 0.54f), darkMetalMat,
+                    Quaternion.Euler(-12f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Mk4 Right Missile Rack", PrimitiveType.Cube, parent,
+                    new Vector3(widthSpread * 0.85f, heightBase + 0.58f, -0.12f), new Vector3(0.36f, 0.44f, 0.54f), darkMetalMat,
+                    Quaternion.Euler(-12f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Mk4 Front Ram Wedge", PrimitiveType.Cube, parent,
+                    new Vector3(0f, 0.24f, 0.88f), new Vector3(widthSpread * 1.35f, 0.26f, 0.32f), glowMat,
+                    Quaternion.Euler(22f, 0f, 0f)));
+            }
+
+            // Stage 5 (Omega Apex): Floating Omega Crown Ring & Dual Ion Pylons
+            if (levelNumber >= 5)
+            {
+                GameObject omegaCrown = CreateTorus("Mk5 Omega Crown", parent, widthSpread * 0.78f, 0.075f, 20, glowMat);
+                omegaCrown.transform.localPosition = new Vector3(0f, heightBase + 1.18f, 0f);
+                omegaCrown.transform.localRotation = Quaternion.Euler(14f, 0f, 0f);
+
+                DisableCollider(CreatePrimitive("Mk5 Left Ion Pylon", PrimitiveType.Capsule, parent,
+                    new Vector3(-widthSpread * 0.95f, heightBase + 0.72f, -0.35f), new Vector3(0.24f, 0.65f, 0.24f), glowMat,
+                    Quaternion.Euler(-20f, 0f, 18f)));
+                DisableCollider(CreatePrimitive("Mk5 Right Ion Pylon", PrimitiveType.Capsule, parent,
+                    new Vector3(widthSpread * 0.95f, heightBase + 0.72f, -0.35f), new Vector3(0.24f, 0.65f, 0.24f), glowMat,
+                    Quaternion.Euler(-20f, 0f, -18f)));
             }
         }
 
