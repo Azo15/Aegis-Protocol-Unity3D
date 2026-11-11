@@ -147,28 +147,38 @@ namespace AegisProtocol.UI
             switch (health.Role)
             {
                 case HealthRole.Reactor:
-                    worldHeightOffset = 5.15f;
-                    baseWorldScale = 0.0175f;
+                    worldHeightOffset = 2.65f;
+                    baseWorldScale = 0.024f;
+                    if (canvasRect != null)
+                        canvasRect.sizeDelta = new Vector2(340f, 52f);
                     break;
                 case HealthRole.PlayerMech:
-                    worldHeightOffset = 2.65f;
-                    baseWorldScale = 0.0125f;
+                    worldHeightOffset = 2.55f;
+                    baseWorldScale = 0.013f;
+                    if (canvasRect != null)
+                        canvasRect.sizeDelta = new Vector2(220f, 36f);
                     break;
                 default:
                     if (health.MaxHealth >= 800f)
                     {
-                        worldHeightOffset = 4.2f;
-                        baseWorldScale = 0.0155f;
+                        worldHeightOffset = 3.6f;
+                        baseWorldScale = 0.0165f;
+                        if (canvasRect != null)
+                            canvasRect.sizeDelta = new Vector2(280f, 42f);
                     }
                     else if (health.MaxHealth >= 220f)
                     {
-                        worldHeightOffset = 2.6f;
-                        baseWorldScale = 0.0115f;
+                        worldHeightOffset = 2.45f;
+                        baseWorldScale = 0.012f;
+                        if (canvasRect != null)
+                            canvasRect.sizeDelta = new Vector2(220f, 34f);
                     }
                     else
                     {
-                        worldHeightOffset = 1.95f;
-                        baseWorldScale = 0.0095f;
+                        worldHeightOffset = 1.85f;
+                        baseWorldScale = 0.010f;
+                        if (canvasRect != null)
+                            canvasRect.sizeDelta = new Vector2(195f, 30f);
                     }
                     break;
             }
@@ -202,20 +212,21 @@ namespace AegisProtocol.UI
 
             int cur = Mathf.CeilToInt(health.CurrentHealth);
             int max = Mathf.CeilToInt(health.MaxHealth);
+            int pct = Mathf.Clamp(Mathf.RoundToInt(health.HealthRatio * 100f), 0, 100);
 
             switch (health.Role)
             {
                 case HealthRole.PlayerMech:
                     labelText.text = healFlashRemaining > 0f
                         ? $"✚ CAN DOLDU! ({cur}/{max})"
-                        : $"TANK: {cur}/{max}";
+                        : $"TANK CANI: {cur}/{max}";
                     break;
                 case HealthRole.Reactor:
-                    labelText.text = $"KALE: {cur}/{max}";
+                    labelText.text = $"★ KALE CANI: {cur} / {max}  (%{pct}) ★";
                     break;
                 default:
                     labelText.text = health.MaxHealth >= 800f
-                        ? $"BOSS: {cur}/{max}"
+                        ? $"☠ BOSS: {cur}/{max}"
                         : $"{cur}/{max}";
                     break;
             }
@@ -223,17 +234,63 @@ namespace AegisProtocol.UI
 
         private void BuildWorldBarVisuals()
         {
-            UpdateDimensionsForRole();
-
             GameObject canvasObj = new GameObject("WorldHealthBarCanvas", typeof(RectTransform), typeof(Canvas));
             canvasObj.transform.SetParent(transform, false);
             Canvas canvas = canvasObj.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
-            canvas.sortingOrder = 25;
+            canvas.sortingOrder = health != null && health.Role == HealthRole.Reactor ? 40 : 25;
 
             canvasRect = canvasObj.GetComponent<RectTransform>();
             canvasRect.sizeDelta = new Vector2(210f, 34f);
+            UpdateDimensionsForRole();
             canvasRect.localScale = Vector3.one * baseWorldScale;
+
+            bool isCastle = health != null && health.Role == HealthRole.Reactor;
+            bool isPlayer = health != null && health.Role == HealthRole.PlayerMech;
+
+            // High-contrast outer glow rim so the bar stands out clearly against glowing 3D geometry
+            GameObject glowObj = new GameObject("OuterRim", typeof(RectTransform), typeof(Image));
+            glowObj.transform.SetParent(canvasRect, false);
+            RectTransform glowRect = glowObj.GetComponent<RectTransform>();
+            glowRect.anchorMin = Vector2.zero;
+            glowRect.anchorMax = Vector2.one;
+            glowRect.offsetMin = isCastle ? new Vector2(-5f, -5f) : new Vector2(-2.5f, -2.5f);
+            glowRect.offsetMax = isCastle ? new Vector2(5f, 5f) : new Vector2(2.5f, 2.5f);
+            Image glowImg = glowObj.GetComponent<Image>();
+            glowImg.sprite = sharedWhiteSprite;
+            glowImg.color = isCastle
+                ? new Color(1f, 0.85f, 0.18f, 0.98f)
+                : (isPlayer ? new Color(0.15f, 0.92f, 1f, 0.92f) : new Color(0.95f, 0.28f, 0.22f, 0.85f));
+
+            if (isCastle)
+            {
+                GameObject bannerObj = new GameObject("CastleHeaderPlate", typeof(RectTransform), typeof(Image));
+                bannerObj.transform.SetParent(canvasRect, false);
+                RectTransform bannerRect = bannerObj.GetComponent<RectTransform>();
+                bannerRect.anchorMin = new Vector2(0.08f, 1f);
+                bannerRect.anchorMax = new Vector2(0.92f, 1f);
+                bannerRect.pivot = new Vector2(0.5f, 0f);
+                bannerRect.anchoredPosition = new Vector2(0f, 5f);
+                bannerRect.sizeDelta = new Vector2(0f, 26f);
+                Image bannerImg = bannerObj.GetComponent<Image>();
+                bannerImg.sprite = sharedWhiteSprite;
+                bannerImg.color = new Color(0.05f, 0.12f, 0.20f, 0.96f);
+
+                GameObject bannerTextObj = new GameObject("CastleHeaderText", typeof(RectTransform), typeof(Text));
+                bannerTextObj.transform.SetParent(bannerRect, false);
+                RectTransform btRect = bannerTextObj.GetComponent<RectTransform>();
+                btRect.anchorMin = Vector2.zero;
+                btRect.anchorMax = Vector2.one;
+                btRect.offsetMin = Vector2.zero;
+                btRect.offsetMax = Vector2.zero;
+                Text bt = bannerTextObj.GetComponent<Text>();
+                bt.font = sharedFont;
+                bt.fontSize = 16;
+                bt.fontStyle = FontStyle.Bold;
+                bt.alignment = TextAnchor.MiddleCenter;
+                bt.color = new Color(1f, 0.90f, 0.25f, 1f);
+                bt.text = "▼ KORUNAN ANA KALE (REAKTÖR) ▼";
+            }
 
             // Dark outer frame
             GameObject borderObj = new GameObject("Border", typeof(RectTransform), typeof(Image));
@@ -245,7 +302,7 @@ namespace AegisProtocol.UI
             borderRect.offsetMax = Vector2.zero;
             Image borderImg = borderObj.GetComponent<Image>();
             borderImg.sprite = sharedWhiteSprite;
-            borderImg.color = new Color(0.03f, 0.05f, 0.09f, 0.94f);
+            borderImg.color = new Color(0.02f, 0.04f, 0.08f, 0.96f);
 
             // Empty dark-red track
             GameObject trackObj = new GameObject("Track", typeof(RectTransform), typeof(Image));
@@ -253,11 +310,11 @@ namespace AegisProtocol.UI
             RectTransform trackRect = trackObj.GetComponent<RectTransform>();
             trackRect.anchorMin = Vector2.zero;
             trackRect.anchorMax = Vector2.one;
-            trackRect.offsetMin = new Vector2(3f, 3f);
-            trackRect.offsetMax = new Vector2(-3f, -3f);
+            trackRect.offsetMin = isCastle ? new Vector2(4.5f, 4.5f) : new Vector2(3f, 3f);
+            trackRect.offsetMax = isCastle ? new Vector2(-4.5f, -4.5f) : new Vector2(-3f, -3f);
             Image trackImg = trackObj.GetComponent<Image>();
             trackImg.sprite = sharedWhiteSprite;
-            trackImg.color = new Color(0.22f, 0.06f, 0.07f, 0.92f);
+            trackImg.color = new Color(0.22f, 0.05f, 0.06f, 0.95f);
 
             // Delayed damage trail bar (white/gold shrink trail)
             GameObject trailObj = new GameObject("DamageTrail", typeof(RectTransform), typeof(Image));
@@ -269,7 +326,7 @@ namespace AegisProtocol.UI
             trailRect.offsetMax = Vector2.zero;
             trailImage = trailObj.GetComponent<Image>();
             trailImage.sprite = sharedWhiteSprite;
-            trailImage.color = new Color(1f, 0.88f, 0.38f, 0.90f);
+            trailImage.color = new Color(1f, 0.88f, 0.38f, 0.92f);
 
             // Main rectangular health fill bar
             GameObject fillObj = new GameObject("HealthFill", typeof(RectTransform), typeof(Image));
@@ -283,8 +340,8 @@ namespace AegisProtocol.UI
             fillImage.sprite = sharedWhiteSprite;
             fillImage.color = new Color(0.18f, 0.94f, 0.30f, 1f);
 
-            // Crisp numeric HP text overlay
-            GameObject textObj = new GameObject("HPText", typeof(RectTransform), typeof(Text));
+            // Crisp numeric HP text overlay with dark outline for maximum legibility
+            GameObject textObj = new GameObject("HPText", typeof(RectTransform), typeof(Text), typeof(Outline));
             textObj.transform.SetParent(borderRect, false);
             RectTransform textRect = textObj.GetComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
@@ -293,12 +350,16 @@ namespace AegisProtocol.UI
             textRect.offsetMax = Vector2.zero;
             labelText = textObj.GetComponent<Text>();
             labelText.font = sharedFont;
-            labelText.fontSize = 19;
+            labelText.fontSize = isCastle ? 22 : 18;
             labelText.fontStyle = FontStyle.Bold;
             labelText.alignment = TextAnchor.MiddleCenter;
             labelText.color = Color.white;
             labelText.horizontalOverflow = HorizontalWrapMode.Overflow;
             labelText.verticalOverflow = VerticalWrapMode.Overflow;
+
+            Outline textOutline = textObj.GetComponent<Outline>();
+            textOutline.effectColor = new Color(0f, 0f, 0f, 0.95f);
+            textOutline.effectDistance = new Vector2(1.4f, -1.4f);
         }
 
         private static void EnsureSharedResources()
