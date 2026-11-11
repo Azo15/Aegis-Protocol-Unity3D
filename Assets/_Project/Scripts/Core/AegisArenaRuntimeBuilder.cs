@@ -55,7 +55,7 @@ namespace AegisProtocol.Core
             BuildArenaFloor(floorMaterial, gridMaterial, wallMaterial);
             BuildReactor(reactorMaterial, out HealthComponent reactorHealth);
             ReactorHealth = reactorHealth;
-            Transform mech = BuildPlayerMech(mechMaterial, accentMaterial, out HealthComponent mechHealth,
+            Transform mech = BuildPlayerMech(mechMaterial, accentMaterial, levelData.LevelNumber, out HealthComponent mechHealth,
                 out MechController mechController,
                 out PlayerInputReader inputReader, out WeaponSystem weaponSystem,
                 out Light tacticalSpotlight,
@@ -273,6 +273,7 @@ namespace AegisProtocol.Core
         private Transform BuildPlayerMech(
             Material bodyMaterial,
             Material accentMaterial,
+            int levelNumber,
             out HealthComponent mechHealth,
             out MechController controller,
             out PlayerInputReader inputReader,
@@ -282,6 +283,7 @@ namespace AegisProtocol.Core
             out ProjectileController missileTemplate,
             out EnergyCrystalPickup crystalTemplate)
         {
+            int lvl = Mathf.Clamp(levelNumber, 1, 5);
             GameObject mech = new GameObject("Player Mech");
             mech.transform.SetParent(runtimeRoot.transform, false);
             mech.transform.position = new Vector3(0f, 1.1f, -8f);
@@ -311,11 +313,10 @@ namespace AegisProtocol.Core
             turret.localPosition = new Vector3(0f, 0.35f, 0f);
             GameObject turretArmor = CreatePrimitive("Turret Armor", PrimitiveType.Sphere, turret,
                 new Vector3(0f, 0.1f, 0f), new Vector3(1.5f, 0.85f, 1.6f), accentMaterial);
-            GameObject plasmaBarrel = CreatePrimitive("Plasma Barrel", PrimitiveType.Cylinder, turret,
-                new Vector3(0f, 0.05f, 1.15f), new Vector3(0.24f, 0.85f, 0.24f), bodyMaterial,
-                Quaternion.Euler(90f, 0f, 0f));
             turretArmor.GetComponent<Collider>().enabled = false;
-            plasmaBarrel.GetComponent<Collider>().enabled = false;
+
+            BuildPlayerTurretWeapons(turret, lvl, bodyMaterial, accentMaterial);
+
             Transform muzzle = new GameObject("Plasma Muzzle").transform;
             muzzle.SetParent(turret, false);
             muzzle.localPosition = new Vector3(0f, 0.05f, 2.0f);
@@ -348,6 +349,41 @@ namespace AegisProtocol.Core
             plasmaTemplate = CreateProjectileTemplate("Plasma Projectile Template", plasmaMat, 0.45f);
             missileTemplate = CreateProjectileTemplate("Missile Projectile Template", missileMat, 0.62f);
             return mech.transform;
+        }
+
+        private void BuildPlayerTurretWeapons(Transform turret, int levelNumber, Material bodyMat, Material accentMat)
+        {
+            int barrelCount = Mathf.Clamp(levelNumber, 1, 5);
+            float totalWidth = (barrelCount - 1) * 0.30f;
+            for (int i = 0; i < barrelCount; i++)
+            {
+                float xOffset = barrelCount == 1 ? 0f : -totalWidth * 0.5f + i * 0.30f;
+                float yOffset = (i % 2 == 0) ? 0.06f : 0.14f;
+                DisableCollider(CreatePrimitive($"Plasma Barrel {i + 1}", PrimitiveType.Cylinder, turret,
+                    new Vector3(xOffset, yOffset, 1.18f), new Vector3(0.20f, 0.88f, 0.20f), bodyMat,
+                    Quaternion.Euler(90f, 0f, 0f)));
+                DisableCollider(CreatePrimitive($"Muzzle Tip {i + 1}", PrimitiveType.Cylinder, turret,
+                    new Vector3(xOffset, yOffset, 1.98f), new Vector3(0.26f, 0.10f, 0.26f), accentMat,
+                    Quaternion.Euler(90f, 0f, 0f)));
+            }
+
+            if (levelNumber >= 2)
+            {
+                DisableCollider(CreatePrimitive("Left Missile Pod", PrimitiveType.Cube, turret,
+                    new Vector3(-0.88f, 0.32f, -0.05f), new Vector3(0.36f, 0.38f, 0.78f), bodyMat));
+                DisableCollider(CreatePrimitive("Right Missile Pod", PrimitiveType.Cube, turret,
+                    new Vector3(0.88f, 0.32f, -0.05f), new Vector3(0.36f, 0.38f, 0.78f), bodyMat));
+            }
+
+            if (levelNumber >= 4)
+            {
+                DisableCollider(CreatePrimitive("Upper Artillery Pod L", PrimitiveType.Cylinder, turret,
+                    new Vector3(-0.62f, 0.62f, 0.25f), new Vector3(0.24f, 0.52f, 0.24f), accentMat,
+                    Quaternion.Euler(78f, 0f, 0f)));
+                DisableCollider(CreatePrimitive("Upper Artillery Pod R", PrimitiveType.Cylinder, turret,
+                    new Vector3(0.62f, 0.62f, 0.25f), new Vector3(0.24f, 0.52f, 0.24f), accentMat,
+                    Quaternion.Euler(78f, 0f, 0f)));
+            }
         }
 
         private EnergyCrystalPickup CreateCrystalTemplate(Material material)
