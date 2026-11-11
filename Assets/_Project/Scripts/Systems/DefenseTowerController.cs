@@ -24,6 +24,8 @@ namespace AegisProtocol.Systems
         private float remainingRepairCapacity;
         private int lastRepairWave;
         private bool ownsRuntimeConfig;
+        private LineRenderer activeBeamRenderer;
+        private float beamDisplayTimer;
 
         public DefenseStructureType StructureType => config != null ? config.StructureType : DefenseStructureType.AutoLaserTurret;
         public float FireRateMultiplier => fireRateMultiplier;
@@ -61,6 +63,13 @@ namespace AegisProtocol.Systems
                 return;
 
             float deltaTime = Time.deltaTime;
+            if (beamDisplayTimer > 0f)
+            {
+                beamDisplayTimer -= deltaTime;
+                if (beamDisplayTimer <= 0f && activeBeamRenderer != null)
+                    activeBeamRenderer.enabled = false;
+            }
+
             switch (config.StructureType)
             {
                 case DefenseStructureType.AutoLaserTurret:
@@ -175,11 +184,21 @@ namespace AegisProtocol.Systems
                 nearestTarget.TakeDamage(config.DamagePerShot, gameObject);
             }
 
+            Vector3 beamStart = turretHead != null ? turretHead.position + turretHead.forward * 0.85f : transform.position + Vector3.up * 1.6f;
+            Vector3 beamEnd = nearestTarget.transform.position + Vector3.up * 0.55f;
+            ShowTowerBeam(beamStart, beamEnd, new Color(0.15f, 0.95f, 1f, 1f), 0.14f);
+
             attackTimer = shotInterval;
         }
 
         private void UpdateEmpTower(float deltaTime)
         {
+            if (turretHead != null)
+            {
+                float pulseScale = 0.88f + Mathf.Sin(Time.time * 5.5f) * 0.10f;
+                turretHead.localScale = Vector3.one * pulseScale;
+            }
+
             if (!IsGameplayActive())
                 return;
 
@@ -188,6 +207,7 @@ namespace AegisProtocol.Systems
                 return;
 
             pulseTimer = config.EmpPulseInterval;
+            SpawnEmpPulseWave(transform.position + Vector3.up * 0.35f, config.EmpRadius);
             int count = Physics.OverlapSphereNonAlloc(
                 transform.position,
                 config.EmpRadius,
@@ -207,17 +227,82 @@ namespace AegisProtocol.Systems
 
         private void UpdateRepairStation(float deltaTime)
         {
+            if (turretHead != null)
+                turretHead.Rotate(Vector3.up, 72f * deltaTime, Space.Self);
+
             if (!IsGameplayActive() || remainingRepairCapacity <= 0f)
                 return;
 
             ResolveRepairTargets();
             float budget = Mathf.Min(config.RepairPerSecond * deltaTime, remainingRepairCapacity);
             float applied = HealTargetIfInRange(mechHealth, budget);
+            if (applied > 0f && mechHealth != null)
+            {
+                ShowTowerBeam(
+                    transform.position + Vector3.up * 2.05f,
+                    mechHealth.transform.position + Vector3.up * 0.8f,
+                    new Color(0.2f, 1f, 0.45f, 0.95f),
+                    0.12f);
+            }
             remainingRepairCapacity -= applied;
             float remainingBudget = Mathf.Min(config.RepairPerSecond * deltaTime, remainingRepairCapacity);
-            applied = HealTargetIfInRange(reactorHealth, remainingBudget);
-            remainingRepairCapacity -= applied;
+            float reactorApplied = HealTargetIfInRange(reactorHealth, remainingBudget);
+            if (reactorApplied > 0f && applied <= 0f && reactorHealth != null)
+            {
+                ShowTowerBeam(
+                    transform.position + Vector3.up * 2.05f,
+                    reactorHealth.transform.position + Vector3.up * 2.2f,
+                    new Color(0.2f, 1f, 0.45f, 0.95f),
+                    0.12f);
+            }
+            remainingRepairCapacity -= reactorApplied;
             remainingRepairCapacity = Mathf.Max(0f, remainingRepairCapacity);
+        }
+
+        private void ShowTowerBeam(Vector3 startPos, Vector3 endPos, Color beamColor, float duration)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            if (activeBeamRenderer == null)
+            {
+                GameObject beamObj = new GameObject("TowerEnergyBeam");
+                beamObj.transform.SetParent(transform, false);
+                activeBeamRenderer = beamObj.AddComponent<LineRenderer>();
+                activeBeamRenderer.positionCount = 2;
+                activeBeamRenderer.startWidth = 0.16f;
+                activeBeamRenderer.endWidth = 0.08f;
+                activeBeamRenderer.useWorldSpace = true;
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                    activeBeamRenderer.material = new Material(shader);
+            }
+
+            activeBeamRenderer.startColor = beamColor;
+            activeBeamRenderer.endColor = beamColor;
+            activeBeamRenderer.SetPosition(0, startPos);
+            activeBeamRenderer.SetPosition(1, endPos);
+            activeBeamRenderer.enabled = true;
+            beamDisplayTimer = duration;
+        }
+
+        private static void SpawnEmpPulseWave(Vector3 center, float radius)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            GameObject pulse = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pulse.name = "EMP Shockwave Ring";
+            pulse.transform.position = center;
+            pulse.transform.localScale = new Vector3(1.2f, 0.04f, 1.2f);
+            DisableCollider(pulse);
+            Renderer r = pulse.GetComponent<Renderer>();
+            if (r != null)
+            {
+                r.material.color = new Color(0.25f, 0.75f, 1f, 0.65f);
+            }
+            TimedEffectDestroyer destroyer = pulse.AddComponent<TimedEffectDestroyer>();
+            destroyer.Initialize(0.38f, Mathf.Max(4f, radius * 1.55f));
         }
 
         private float HealTargetIfInRange(HealthComponent target, float amount)
