@@ -573,6 +573,9 @@ namespace AegisProtocol.UI
             cockpitCrosshairText.GetComponent<RectTransform>().sizeDelta = new Vector2(260f, 44f);
             cockpitCrosshairText.color = new Color(0.15f, 1f, 0.55f, 0.92f);
             cockpitCrosshairText.gameObject.SetActive(false);
+
+            TacticalMinimapHUD minimap = parent.gameObject.AddComponent<TacticalMinimapHUD>();
+            minimap.BuildRadar(parent, runtimeWhiteSprite, runtimeFont);
         }
 
         private void ResolveSystems()
