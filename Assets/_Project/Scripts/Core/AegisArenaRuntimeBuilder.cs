@@ -814,8 +814,17 @@ namespace AegisProtocol.Core
             GameObject terminal = new GameObject(terminalId);
             terminal.transform.SetParent(runtimeRoot.transform, false);
             terminal.transform.position = position;
+            Material darkBaseMat = CreateMaterial(new Color(0.16f, 0.22f, 0.30f), new Color(0.04f, 0.08f, 0.14f));
+            DisableCollider(CreatePrimitive("Terminal Base Pad", PrimitiveType.Cylinder, terminal.transform,
+                new Vector3(0f, 0.12f, 0f), new Vector3(2.8f, 0.14f, 2.8f), darkBaseMat));
             GameObject console = CreatePrimitive("Terminal Console", PrimitiveType.Cube, terminal.transform,
-                new Vector3(0f, 1.25f, 0f), new Vector3(1.5f, 2.5f, 1.2f), material);
+                new Vector3(0f, 1.15f, 0f), new Vector3(1.25f, 2.1f, 1.05f), darkBaseMat);
+            DisableCollider(CreatePrimitive("Satellite Dish Bowl", PrimitiveType.Sphere, terminal.transform,
+                new Vector3(0f, 2.35f, 0f), new Vector3(1.55f, 0.45f, 1.55f), material,
+                Quaternion.Euler(-22f, 0f, 0f)));
+            DisableCollider(CreatePrimitive("Satellite Emitter Needle", PrimitiveType.Cylinder, terminal.transform,
+                new Vector3(0f, 2.75f, 0.18f), new Vector3(0.14f, 0.45f, 0.14f), material,
+                Quaternion.Euler(-22f, 0f, 0f)));
             GameObject signalRing = CreateTorus("Signal Ring", terminal.transform, 5.5f, 0.08f, 48, material);
             signalRing.transform.localPosition = new Vector3(0f, 0.12f, 0f);
             SphereCollider collider = terminal.AddComponent<SphereCollider>();

@@ -157,6 +157,7 @@ namespace AegisProtocol.Systems
             isCompleted = true;
             progressSeconds = requiredHackDuration;
             ApplyVisualState(completedColor, true);
+            SpawnCompletedSkyBeam();
             GameManager manager = GameManager.Instance;
             if (manager != null && manager.RegisterTerminalCompleted(terminalId))
             {
@@ -190,6 +191,31 @@ namespace AegisProtocol.Systems
                     statusLights[i].color = color;
                     statusLights[i].intensity = fullyActive ? 2.5f : 1f;
                     statusLights[i].enabled = true;
+                }
+            }
+        }
+
+        private void SpawnCompletedSkyBeam()
+        {
+            if (!Application.isPlaying)
+                return;
+
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            beam.name = "SatelliteSkyBeam";
+            beam.transform.SetParent(transform, false);
+            beam.transform.localPosition = new Vector3(0f, 16f, 0f);
+            beam.transform.localScale = new Vector3(0.45f, 14f, 0.45f);
+            Collider col = beam.GetComponent<Collider>();
+            if (col != null)
+                col.enabled = false;
+            Renderer rend = beam.GetComponent<Renderer>();
+            if (rend != null)
+            {
+                rend.material.color = completedColor;
+                if (rend.material.HasProperty("_EmissionColor"))
+                {
+                    rend.material.EnableKeyword("_EMISSION");
+                    rend.material.SetColor("_EmissionColor", completedColor * 2.2f);
                 }
             }
         }
