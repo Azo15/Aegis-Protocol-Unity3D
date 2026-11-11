@@ -273,35 +273,108 @@ namespace AegisProtocol.Systems
                 return;
             }
 
-            GameObject basePart = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            basePart.name = "StructureBase";
-            basePart.transform.SetParent(transform, false);
-            basePart.transform.localPosition = Vector3.zero;
-            basePart.transform.localScale = new Vector3(1.8f, 0.35f, 1.8f);
-            ApplyPartColor(basePart, config.VisualColor);
-            DisableCollider(basePart);
+            Color primaryColor = config != null ? config.VisualColor : new Color(0.15f, 0.9f, 1f);
+            Color darkMetal = new Color(0.16f, 0.22f, 0.30f);
 
-            GameObject column = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            column.name = "StructureColumn";
-            column.transform.SetParent(transform, false);
-            column.transform.localPosition = Vector3.up * 0.85f;
-            column.transform.localScale = new Vector3(0.55f, 1.3f, 0.55f);
-            ApplyPartColor(column, config.VisualColor * 0.8f);
-            DisableCollider(column);
+            // Armored Pedestal Base
+            CreateTowerPart("PedestalBase", PrimitiveType.Cylinder, transform,
+                new Vector3(0f, 0.16f, 0f), new Vector3(2.1f, 0.16f, 2.1f), darkMetal);
+            CreateTowerPart("PedestalRim", PrimitiveType.Cylinder, transform,
+                new Vector3(0f, 0.36f, 0f), new Vector3(1.55f, 0.12f, 1.55f), primaryColor * 0.85f);
 
-            PrimitiveType headType = config.StructureType == DefenseStructureType.AutoLaserTurret
-                ? PrimitiveType.Sphere
-                : PrimitiveType.Cube;
-            GameObject head = GameObject.CreatePrimitive(headType);
-            head.name = "StructureHead";
-            head.transform.SetParent(transform, false);
-            head.transform.localPosition = Vector3.up * 1.65f;
-            head.transform.localScale = config.StructureType == DefenseStructureType.AutoLaserTurret
-                ? new Vector3(0.9f, 0.45f, 1.4f)
-                : Vector3.one * 0.9f;
-            ApplyPartColor(head, config.VisualColor);
-            DisableCollider(head);
-            turretHead = head.transform;
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * 90f;
+                Quaternion rot = Quaternion.Euler(0f, angle, 0f);
+                Vector3 pos = rot * new Vector3(0f, 0.32f, 0.85f);
+                CreateTowerPart($"BaseStrut_{i}", PrimitiveType.Cube, transform,
+                    pos, new Vector3(0.28f, 0.32f, 0.55f), darkMetal, rot);
+            }
+
+            DefenseStructureType type = config != null ? config.StructureType : DefenseStructureType.AutoLaserTurret;
+            switch (type)
+            {
+                case DefenseStructureType.AutoLaserTurret:
+                {
+                    CreateTowerPart("LaserColumn", PrimitiveType.Cylinder, transform,
+                        new Vector3(0f, 0.95f, 0f), new Vector3(0.62f, 0.58f, 0.62f), darkMetal);
+
+                    GameObject headPivot = new GameObject("LaserTurretHead");
+                    headPivot.transform.SetParent(transform, false);
+                    headPivot.transform.localPosition = new Vector3(0f, 1.62f, 0f);
+                    turretHead = headPivot.transform;
+
+                    CreateTowerPart("TurretHousing", PrimitiveType.Cube, turretHead,
+                        Vector3.zero, new Vector3(1.05f, 0.58f, 1.25f), darkMetal);
+                    CreateTowerPart("TurretCoreDome", PrimitiveType.Sphere, turretHead,
+                        new Vector3(0f, 0.25f, -0.08f), new Vector3(0.75f, 0.45f, 0.85f), primaryColor);
+                    CreateTowerPart("LeftLaserBarrel", PrimitiveType.Cylinder, turretHead,
+                        new Vector3(-0.28f, 0.04f, 0.88f), new Vector3(0.16f, 0.65f, 0.16f), primaryColor,
+                        Quaternion.Euler(90f, 0f, 0f));
+                    CreateTowerPart("RightLaserBarrel", PrimitiveType.Cylinder, turretHead,
+                        new Vector3(0.28f, 0.04f, 0.88f), new Vector3(0.16f, 0.65f, 0.16f), primaryColor,
+                        Quaternion.Euler(90f, 0f, 0f));
+                    break;
+                }
+
+                case DefenseStructureType.EmpSlowTower:
+                {
+                    CreateTowerPart("TeslaSpire", PrimitiveType.Cylinder, transform,
+                        new Vector3(0f, 1.25f, 0f), new Vector3(0.45f, 0.95f, 0.45f), darkMetal);
+                    CreateTowerPart("TeslaCoilRing1", PrimitiveType.Cylinder, transform,
+                        new Vector3(0f, 0.85f, 0f), new Vector3(1.35f, 0.07f, 1.35f), primaryColor);
+                    CreateTowerPart("TeslaCoilRing2", PrimitiveType.Cylinder, transform,
+                        new Vector3(0f, 1.35f, 0f), new Vector3(1.10f, 0.07f, 1.10f), primaryColor);
+                    CreateTowerPart("TeslaCoilRing3", PrimitiveType.Cylinder, transform,
+                        new Vector3(0f, 1.82f, 0f), new Vector3(0.85f, 0.07f, 0.85f), primaryColor);
+
+                    GameObject orb = CreateTowerPart("EmpPlasmaOrb", PrimitiveType.Sphere, transform,
+                        new Vector3(0f, 2.38f, 0f), new Vector3(0.88f, 0.88f, 0.88f), primaryColor);
+                    turretHead = orb.transform;
+                    break;
+                }
+
+                case DefenseStructureType.RepairStation:
+                {
+                    CreateTowerPart("MedColumnLeft", PrimitiveType.Cube, transform,
+                        new Vector3(-0.55f, 1.05f, 0f), new Vector3(0.26f, 1.35f, 0.26f), darkMetal);
+                    CreateTowerPart("MedColumnRight", PrimitiveType.Cube, transform,
+                        new Vector3(0.55f, 1.05f, 0f), new Vector3(0.26f, 1.35f, 0.26f), darkMetal);
+
+                    GameObject crossPivot = new GameObject("RepairCrossHead");
+                    crossPivot.transform.SetParent(transform, false);
+                    crossPivot.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+                    turretHead = crossPivot.transform;
+
+                    Color healGreen = new Color(0.18f, 0.98f, 0.42f);
+                    CreateTowerPart("CrossVertical", PrimitiveType.Cube, turretHead,
+                        Vector3.zero, new Vector3(0.32f, 1.05f, 0.32f), healGreen);
+                    CreateTowerPart("CrossHorizontal", PrimitiveType.Cube, turretHead,
+                        Vector3.zero, new Vector3(1.05f, 0.32f, 0.32f), healGreen);
+                    break;
+                }
+            }
+        }
+
+        private GameObject CreateTowerPart(
+            string partName,
+            PrimitiveType primitiveType,
+            Transform parent,
+            Vector3 localPos,
+            Vector3 localScale,
+            Color color,
+            Quaternion? localRot = null)
+        {
+            GameObject part = GameObject.CreatePrimitive(primitiveType);
+            part.name = partName;
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = localPos;
+            part.transform.localScale = localScale;
+            if (localRot.HasValue)
+                part.transform.localRotation = localRot.Value;
+            ApplyPartColor(part, color);
+            DisableCollider(part);
+            return part;
         }
 
         private void ApplyPartColor(GameObject part, Color color)
