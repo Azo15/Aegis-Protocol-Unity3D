@@ -71,6 +71,11 @@ namespace AegisProtocol.UI
         private Text cameraModeText;
         private Text cockpitCrosshairText;
         private Text waveAlertText;
+        private Text castleUnderAttackText;
+        private DamageVignetteOverlay damageVignette;
+        private HealthComponent subscribedReactorHealth;
+        private HealthComponent subscribedMechHealth;
+        private float castleUnderAttackTimer;
         private int lastAnnouncedWave;
         private float waveAlertTimer;
         private Text[] upgradeCardTexts = Array.Empty<Text>();
@@ -107,6 +112,7 @@ namespace AegisProtocol.UI
 
         private void OnDestroy()
         {
+            UnbindHealthEvents();
             if (gameManager != null)
                 gameManager.OnGameStateChanged -= HandleGameStateChanged;
             if (upgradeManager != null)
@@ -589,6 +595,20 @@ namespace AegisProtocol.UI
                 TextAnchor.UpperCenter);
             waveAlertText.GetComponent<RectTransform>().sizeDelta = new Vector2(920f, 54f);
             waveAlertText.gameObject.SetActive(false);
+
+            damageVignette = parent.gameObject.AddComponent<DamageVignetteOverlay>();
+            damageVignette.BuildOverlay(parent);
+
+            castleUnderAttackText = CreateHudText(
+                parent,
+                "⚠ KALE SALDIRI ALTINDA! KORUMAYA DÖN! ⚠",
+                new Vector2(0f, -138f),
+                new Vector2(0.5f, 1f),
+                24,
+                TextAnchor.UpperCenter);
+            castleUnderAttackText.GetComponent<RectTransform>().sizeDelta = new Vector2(920f, 48f);
+            castleUnderAttackText.color = new Color(1f, 0.22f, 0.18f, 1f);
+            castleUnderAttackText.gameObject.SetActive(false);
         }
 
         private void ResolveSystems()
@@ -606,6 +626,55 @@ namespace AegisProtocol.UI
             waveSpawner = FindFirstObjectByType<WaveSpawnerManager>();
             audioManager = AudioManager.Instance;
             cameraRig = FindFirstObjectByType<IsometricCameraRig>();
+            BindHealthEvents();
+        }
+
+        private void BindHealthEvents()
+        {
+            if (subscribedReactorHealth != reactorHealth)
+            {
+                if (subscribedReactorHealth != null)
+                    subscribedReactorHealth.OnDamaged -= HandleReactorDamaged;
+                subscribedReactorHealth = reactorHealth;
+                if (subscribedReactorHealth != null)
+                    subscribedReactorHealth.OnDamaged += HandleReactorDamaged;
+            }
+
+            if (subscribedMechHealth != mechHealth)
+            {
+                if (subscribedMechHealth != null)
+                    subscribedMechHealth.OnDamaged -= HandleMechDamaged;
+                subscribedMechHealth = mechHealth;
+                if (subscribedMechHealth != null)
+                    subscribedMechHealth.OnDamaged += HandleMechDamaged;
+            }
+        }
+
+        private void UnbindHealthEvents()
+        {
+            if (subscribedReactorHealth != null)
+            {
+                subscribedReactorHealth.OnDamaged -= HandleReactorDamaged;
+                subscribedReactorHealth = null;
+            }
+            if (subscribedMechHealth != null)
+            {
+                subscribedMechHealth.OnDamaged -= HandleMechDamaged;
+                subscribedMechHealth = null;
+            }
+        }
+
+        private void HandleReactorDamaged(HealthComponent target, float amount, GameObject instigator)
+        {
+            if (damageVignette != null)
+                damageVignette.TriggerHitFlash(0.92f, true);
+            castleUnderAttackTimer = 2.6f;
+        }
+
+        private void HandleMechDamaged(HealthComponent target, float amount, GameObject instigator)
+        {
+            if (damageVignette != null)
+                damageVignette.TriggerHitFlash(0.65f, false);
         }
 
         private void ResolveSystemsIfNeeded()
@@ -626,6 +695,7 @@ namespace AegisProtocol.UI
             int currentLvl = gameManager != null ? Mathf.Clamp(gameManager.CurrentLevel, 1, 5) : 1;
             SetHealthBar(mechHealth, mechHealthBar, mechHealthText, $"TANK MK-{currentLvl} CANI");
             SetHealthBar(reactorHealth, reactorHealthBar, reactorHealthText, "KALE CANI (REAKTÖR)");
+            UpdateDamageAlertFeedback();
             if (cameraRig != null)
             {
                 if (cameraModeText != null)
@@ -731,6 +801,36 @@ namespace AegisProtocol.UI
                 {
                     interactPromptText.text = string.Empty;
                 }
+            }
+        }
+
+        private void UpdateDamageAlertFeedback()
+        {
+            bool lowMech = mechHealth != null && !mechHealth.IsDead && mechHealth.HealthRatio < 0.35f;
+            bool lowReactor = reactorHealth != null && !reactorHealth.IsDead && reactorHealth.HealthRatio < 0.35f;
+            if (damageVignette != null)
+                damageVignette.SetCriticalPulse(lowMech || lowReactor || castleUnderAttackTimer > 0.1f, lowReactor ? 7.5f : 5.5f);
+
+            if (castleUnderAttackText == null)
+                return;
+
+            if (castleUnderAttackTimer > 0f)
+            {
+                castleUnderAttackTimer = Mathf.Max(0f, castleUnderAttackTimer - Time.deltaTime);
+                if (!castleUnderAttackText.gameObject.activeSelf)
+                    castleUnderAttackText.gameObject.SetActive(true);
+
+                float blink = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 14f);
+                castleUnderAttackText.color = Color.Lerp(
+                    new Color(1f, 0.16f, 0.14f, 0.92f),
+                    new Color(1f, 0.85f, 0.2f, 1f),
+                    blink);
+                int reactorHp = reactorHealth != null ? Mathf.CeilToInt(reactorHealth.CurrentHealth) : 0;
+                castleUnderAttackText.text = $"⚠ KALE SALDIRI ALTINDA! (KALAN CAN: {reactorHp}) ⚠";
+            }
+            else if (castleUnderAttackText.gameObject.activeSelf)
+            {
+                castleUnderAttackText.gameObject.SetActive(false);
             }
         }
 
