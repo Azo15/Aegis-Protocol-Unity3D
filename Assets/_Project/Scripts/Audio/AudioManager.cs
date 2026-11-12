@@ -33,6 +33,8 @@ namespace AegisProtocol.Audio
         private readonly List<AudioClip> generatedClips = new List<AudioClip>();
         private AudioClip[] levelShotClips = Array.Empty<AudioClip>();
         private AudioClip[] levelExplosionClips = Array.Empty<AudioClip>();
+        private AudioClip castleUnderAttackClip;
+        private float lastCastleAlertTime = -10f;
         private AudioSource musicSource;
         private AudioSource sfxSource;
         private GameManager gameManager;
@@ -108,6 +110,15 @@ namespace AegisProtocol.Audio
         }
 
         public void PlayUiClick() => Play(uiClick);
+
+        public void PlayCastleUnderAttackAlert()
+        {
+            if (Time.unscaledTime - lastCastleAlertTime < 1.6f)
+                return;
+
+            lastCastleAlertTime = Time.unscaledTime;
+            Play(castleUnderAttackClip != null ? castleUnderAttackClip : overheatWarning);
+        }
 
         public void PlayLevelExplosion(int levelTier, bool isMissile)
         {
@@ -244,6 +255,7 @@ namespace AegisProtocol.Audio
                 missileLaunch = CreateSynthClip("Missile Launch", 0.42f, 420f, 95f, 0.34f, false);
             if (overheatWarning == null)
                 overheatWarning = CreateSynthClip("Overheat Warning", 0.48f, 980f, 650f, 0.28f, false);
+            castleUnderAttackClip = CreateSynthClip("Castle Alert Siren", 0.36f, 740f, 1120f, 0.30f, false);
             if (enemyDestroyed == null)
                 enemyDestroyed = CreateSynthClip("Enemy Destruction", 0.32f, 280f, 65f, 0.35f, false);
             if (crystalCollected == null)

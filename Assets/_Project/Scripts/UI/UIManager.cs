@@ -669,6 +669,7 @@ namespace AegisProtocol.UI
             if (damageVignette != null)
                 damageVignette.TriggerHitFlash(0.92f, true);
             castleUnderAttackTimer = 2.6f;
+            audioManager?.PlayCastleUnderAttackAlert();
         }
 
         private void HandleMechDamaged(HealthComponent target, float amount, GameObject instigator)
