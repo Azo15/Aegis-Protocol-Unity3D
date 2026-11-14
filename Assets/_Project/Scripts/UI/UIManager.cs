@@ -330,12 +330,12 @@ namespace AegisProtocol.UI
 
         private void BuildBriefing(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 980f, 920f);
-            briefingTitleText = CreateText(content, "GÖREV BRİFİNGİ", 38, AccentColor, 64f, FontStyle.Bold);
-            briefingDetailsText = CreateText(content, string.Empty, 22, Color.white, 430f, FontStyle.Normal);
-            AddButton(content, "SAVUNMAYI BAŞLAT (DALGA 1)", () => gameManager?.StartWave(1), 68f, 24);
-            AddButton(content, "SEVİYE DEĞİŞTİR (SEKTÖR SEÇİMİ)", ShowLevelSelectPanel, 56f, 21);
-            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 54f, 21);
+            Transform content = CreateVerticalContent(parent, 820f, 680f);
+            briefingTitleText = CreateText(content, "GÖREV BRİFİNGİ", 38, AccentColor, 58f, FontStyle.Bold);
+            briefingDetailsText = CreateText(content, string.Empty, 21, Color.white, 240f, FontStyle.Normal);
+            AddButton(content, "▶ SAVAŞI BAŞLAT", () => gameManager?.StartWave(1), 64f, 23);
+            AddButton(content, "SEKTÖR DEĞİŞTİR", ShowLevelSelectPanel, 52f, 20);
+            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 50f, 20);
             UpdateBriefingTexts();
         }
 
@@ -346,16 +346,12 @@ namespace AegisProtocol.UI
 
             SectorLevelData data = gameManager != null ? gameManager.CurrentLevelData : SectorLevelConfig.GetLevel(1);
             string enemyTierDesc = GetStageEnemyDescription(data.LevelNumber);
-            briefingTitleText.text = $"{data.SectorName} — {data.Subtitle}";
+            briefingTitleText.text = $"{data.SectorName}";
             briefingDetailsText.text =
                 $"★ {data.WeaponEvolutionTitle}\n" +
-                $"★ {data.SpecialPerkTitle}\n" +
                 $"☠ {enemyTierDesc}\n\n" +
-                "NASIL KAZANIRSIN? (ÇOK BASİT):\n" +
-                "• 5 Dalgadaki tüm düşmanları temizle -> SEVİYEYİ KAZANIRSIN!\n" +
-                "• (Bonus) Turuncu Uydu Halkalarında durursan +75 Kristal, +150 Can ve +500 Puan kazanırsın!\n\n" +
-                "NASIL KAYBEDERSİN?:\n" +
-                "• Kendi Robotunun Canı (MECH HP) VEYA Ortadaki Kalenin Canı (KALE HP) 0'a düşerse kaybedersin!";
+                "🎯 GÖREV: 5 Dalgayı temizle ve Kaleyi koru.\n" +
+                "📡 BONUS: Turuncu uydu halkalarında dur (+75 Kristal & +Can).";
         }
 
         private static string GetStageEnemyDescription(int levelNumber)
@@ -363,35 +359,33 @@ namespace AegisProtocol.UI
             switch (levelNumber)
             {
                 case 1:
-                    return "Bu Seviyenin Düşmanları: MK-I Kızıl Keşif Dronları & Öncü Birlikler";
+                    return "MK-I Öncü Dronlar";
                 case 2:
-                    return "Bu Seviyenin Düşmanları: MK-II Altın Zırhlı & Çift Namlulu Çöl Kuşatmacıları";
+                    return "MK-II Çift Namlulu Çöl Kuşatmacıları";
                 case 3:
-                    return "Bu Seviyenin Düşmanları: MK-III Mor Plazma Halkalı & Reaktör Kuleli Siber Lejyon";
+                    return "MK-III Mor Plazma Siber Lejyon";
                 case 4:
-                    return "Bu Seviyenin Düşmanları: MK-IV Zümrüt Kuşatma Juggernautları & Omuz Füzeli Robotlar (Çift Boss!)";
+                    return "MK-IV Füzeli Juggernautlar (Çift Boss)";
                 case 5:
-                    return "Bu Seviyenin Düşmanları: MK-V OMEGA KIYAMET ORDUSU — İyon Sütunlu & Taç Halkalı Elit Zırhlılar!";
+                    return "MK-V Omega İyon Ordusu (Final)";
                 default:
-                    return "Bu Seviyenin Düşmanları: Zırhlı Mekanik Birlikler";
+                    return "Zırhlı Mekanik Birlikler";
             }
         }
 
         private void BuildHowToPlay(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 860f, 820f);
-            CreateText(content, "NASIL OYNANIR & PUAN TABLOSU", 34, AccentColor, 64f, FontStyle.Bold);
+            Transform content = CreateVerticalContent(parent, 820f, 660f);
+            CreateText(content, "KONTROLLER & PUANLAR", 34, AccentColor, 56f, FontStyle.Bold);
             CreateText(content,
-                "WASD: Mech hareketi | Fare: bağımsız kule nişanı\n" +
-                "C veya V: Kamera Açısı Değiştir (3B TPS / Tank İçi Kokpit FPS / Kuşbakışı)\n" +
-                "Q / R veya Sol-Sağ Ok: Kamerayı 360° Döndür | Fare Tekerleği: Yakınlaştır\n" +
-                "Sol tık: seri mermi | Sağ tık: güdümlü füze | Space: dash\n" +
-                "1: Lazer (50) | 2: EMP (75) | 3: Onarım (100) | [E]: Kule Kur\n\n" +
-                "Scout Drone +50 | Ranged Striker +100\n" +
-                "Heavy Siege Mech +250 | Overlord Titan +1500\n" +
-                "Terminal hack +500 | Hasarsız dalga +300",
-                21, Color.white, 380f, FontStyle.Normal);
-            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 58f);
+                "[WASD / Oklar] Hareket  •  [Space] Dash  •  [H] İlaç (+Can)\n" +
+                "[Fare] Nişan & Ateş (Sol: Tüfek / Sağ: Füze)\n" +
+                "[C] Kamera Açısı  •  [Q / R] Döndür  •  [Tekerlek] Yakınlaştır\n" +
+                "[1] Lazer (50)  •  [2] EMP (75)  •  [3] Onarım (100)  •  [E] Kule Kur\n" +
+                "[F] Fener  •  [Esc / P] Duraklat\n\n" +
+                "Puan: Drone +50 | Tank +100 | Robot +250 | Boss +1500 | Uydu +500",
+                20, Color.white, 290f, FontStyle.Normal);
+            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 56f);
         }
 
         private void BuildSettings(Transform parent)
