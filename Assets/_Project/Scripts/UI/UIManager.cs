@@ -237,9 +237,9 @@ namespace AegisProtocol.UI
         {
             Transform content = CreateVerticalContent(parent, 740f, 840f);
             CreateText(content, "AEGIS PROTOCOL", 52, AccentColor, 82f, FontStyle.Bold);
-            CreateText(content, "3D TACTICAL MECH & 5-SECTOR CAMPAIGN", 22, Color.white, 48f, FontStyle.Bold);
-            AddButton(content, "OYUNA BAŞLA (SEVİYE SEÇİMİ)", ShowLevelSelectPanel, 64f);
-            AddButton(content, "NASIL OYNANIR & PUAN TABLOSU", () => ShowAuxiliaryPanel(howToPanel), 56f);
+            CreateText(content, "3D TACTICAL MECH & BASE DEFENSE", 20, Color.white, 44f, FontStyle.Bold);
+            AddButton(content, "▶ OYNA", ShowLevelSelectPanel, 64f);
+            AddButton(content, "KONTROLLER & PUANLAR", () => ShowAuxiliaryPanel(howToPanel), 56f);
             AddButton(content, "SES AYARLARI", () => ShowAuxiliaryPanel(settingsPanel), 56f);
             AddButton(content, "ÇIKIŞ", Application.Quit, 56f);
         }
@@ -558,23 +558,23 @@ namespace AegisProtocol.UI
 
             Text guideBanner = CreateHudText(
                 parent,
-                "YUKARI/AŞAĞI OK (W/S): İleri/Geri  |  SOL/SAĞ OK (A/D veya Q/R): 360° Sola/Sağa Dön\n[C]: Kamera Açısı  |  [Z/X veya Tekerlek]: Uzaklaştır  |  [H]: İlaç (+150 Can)",
-                new Vector2(0f, -18f),
+                "WASD / Oklar: Hareket  •  Fare: Ateş & Füze  •  [C] Kamera  •  [H] İlaç",
+                new Vector2(0f, -16f),
                 new Vector2(0.5f, 1f),
-                15,
+                14,
                 TextAnchor.UpperCenter);
-            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(760f, 52f);
-            guideBanner.color = new Color(0.75f, 0.96f, 1f, 0.95f);
+            guideBanner.GetComponent<RectTransform>().sizeDelta = new Vector2(680f, 30f);
+            guideBanner.color = new Color(0.75f, 0.96f, 1f, 0.85f);
 
             cameraModeText = CreateHudText(
                 parent,
-                "[C] KAMERA: DENGELİ 3B SAVAŞ AÇISI  |  [Sol/Sağ Ok veya Q/R] 360° Döndür",
-                new Vector2(28f, -158f),
+                "[C] KAMERA: DENGELİ 3B",
+                new Vector2(28f, -156f),
                 new Vector2(0f, 1f),
-                16,
+                15,
                 TextAnchor.UpperLeft);
-            cameraModeText.GetComponent<RectTransform>().sizeDelta = new Vector2(640f, 34f);
-            cameraModeText.color = new Color(1f, 0.88f, 0.32f, 1f);
+            cameraModeText.GetComponent<RectTransform>().sizeDelta = new Vector2(460f, 30f);
+            cameraModeText.color = new Color(1f, 0.88f, 0.32f, 0.95f);
 
             cockpitCrosshairText = CreateHudText(
                 parent,
@@ -704,10 +704,7 @@ namespace AegisProtocol.UI
             if (cameraRig != null)
             {
                 if (cameraModeText != null)
-                {
-                    cameraModeText.text =
-                        $"[C] KAMERA: {cameraRig.CurrentViewModeDisplayName}  |  [Sol/Sağ Ok veya Q/R] 360° Döndür";
-                }
+                    cameraModeText.text = $"[C] {cameraRig.CurrentViewModeDisplayName}";
                 if (cockpitCrosshairText != null)
                     cockpitCrosshairText.gameObject.SetActive(false);
             }
@@ -752,10 +749,10 @@ namespace AegisProtocol.UI
                 }
 
                 int remainingEnemies = waveSpawner != null ? waveSpawner.ActiveEnemyCount : 0;
-                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {currentWave}/5 (5. Dalga Bitince Kazanırsın)";
-                timerText.text = $"KALAN DÜŞMAN: {remainingEnemies}   |   SÜRE: {FormatTime(gameManager.ElapsedSeconds)}";
-                scoreText.text = $"TOPLAM SKOR: {gameManager.TotalScore:N0}";
-                terminalText.text = $"BONUS UYDU: {gameManager.CompletedTerminals}/3 (+75 Kristal & +Can)";
+                waveText.text = $"SEVİYE {gameManager.CurrentLevel}/5  •  DALGA {currentWave}/5";
+                timerText.text = $"DÜŞMAN: {remainingEnemies}  |  {FormatTime(gameManager.ElapsedSeconds)}";
+                scoreText.text = $"SKOR: {gameManager.TotalScore:N0}";
+                terminalText.text = $"UYDU: {gameManager.CompletedTerminals}/3";
             }
 
             if (weaponSystem != null)
@@ -780,9 +777,9 @@ namespace AegisProtocol.UI
             }
 
             if (resourceBank != null)
-                crystalText.text = $"ENERJİ KRİSTALİ: {resourceBank.CurrentBalance}";
+                crystalText.text = $"KRİSTAL: {resourceBank.CurrentBalance}";
             if (buildManager != null)
-                buildSelectionText.text = $"[1] LAZER 50   [2] EMP 75   [3] ONARIM 100   [H] İLAÇ / CAN DOLDUR (+150 CAN)   | SEÇİLİ: {buildManager.SelectedStructureType}";
+                buildSelectionText.text = $"[1] Lazer 50  •  [2] EMP 75  •  [3] Onarım 100  •  [H] İlaç";
             if (interactionScanner != null)
             {
                 bool lowMech = mechHealth != null && mechHealth.HealthRatio < 0.38f;
