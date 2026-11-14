@@ -246,42 +246,52 @@ namespace AegisProtocol.UI
 
         private void BuildLevelSelect(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 1140f, 960f);
-            CreateText(content, "SEKTÖR & SEVİYE SEÇİMİ (5 KADEMELİ OPERASYON)", 36, AccentColor, 54f, FontStyle.Bold);
-            CreateText(content, "Her seviyeyi bitirdiğinde bir sonraki sektör ve yeni Mech Silah Evrimi açılır! (Test için tüm kilitleri aç: F10)", 18, Color.white, 34f, FontStyle.Normal);
+            Transform content = CreateVerticalContent(parent, 860f, 820f);
+            CreateText(content, "SEKTÖR SEÇİMİ", 38, AccentColor, 54f, FontStyle.Bold);
+            CreateText(content, "Oynamak istediğin operasyonu seç  •  (Test: F10)", 17, new Color(0.75f, 0.88f, 0.96f, 0.9f), 30f, FontStyle.Normal);
 
             levelSelectButtons = new Button[SectorLevelConfig.TotalLevels];
             levelSelectLabels = new Text[SectorLevelConfig.TotalLevels];
             for (int i = 0; i < SectorLevelConfig.TotalLevels; i++)
             {
                 int levelNumber = i + 1;
-                Text label = AddButton(content, string.Empty, () => LaunchSelectedLevel(levelNumber), 108f, 18);
+                Text label = AddButton(content, string.Empty, () => LaunchSelectedLevel(levelNumber), 84f, 19);
                 levelSelectLabels[i] = label;
                 levelSelectButtons[i] = label.transform.parent.GetComponent<Button>();
             }
 
-            AddButton(content, "GERİ (ANA MENÜ)", () => SetVisibleState(GameState.MainMenu), 52f, 20);
+            AddButton(content, "GERİ", () => SetVisibleState(GameState.MainMenu), 52f, 20);
         }
 
         private void RefreshLevelSelectButtons()
         {
             int maxUnlocked = gameManager != null ? gameManager.MaxUnlockedLevel : 1;
+            string[] shortLoadouts =
+            {
+                "1x Mavi Lazer  •  1x Güdümlü Füze",
+                "2x İkili Zümrüt Tüfek  •  2x Füze  •  +%20 Hız",
+                "3x Yıldırım Tüfeği  •  3x Füze  •  Gece Projektörü",
+                "4x Kızıl Magma Topu  •  4x Füze  •  Oto-Onarım",
+                "5x Omega Hyper-Cannon  •  5x Nükleer  •  +%50 Kule Hızı"
+            };
+
             for (int i = 0; i < SectorLevelConfig.TotalLevels; i++)
             {
                 int levelNumber = i + 1;
                 SectorLevelData data = SectorLevelConfig.GetLevel(levelNumber);
                 bool unlocked = levelNumber <= maxUnlocked;
-                string status = unlocked
-                    ? (levelNumber < maxUnlocked ? "[TAMAMLANDI ✓ - AÇIK]" : "[AÇIK - OYNANABİLİR]")
-                    : $"[KİLİTLİ - Önce Seviye {levelNumber - 1}'i Bitir]";
+                bool completed = levelNumber < maxUnlocked;
+                string badge = completed ? "✓ TAMAMLANDI" : (unlocked ? "▶ OYNANABİLİR" : "🔒 KİLİTLİ");
 
                 if (levelSelectLabels[i] != null)
                 {
-                    levelSelectLabels[i].text =
-                        $"{status}   {data.SectorName} ({data.Subtitle})\n" +
-                        $"{data.WeaponEvolutionTitle}\n" +
-                        $"{data.SpecialPerkTitle}";
-                    levelSelectLabels[i].color = unlocked ? Color.white : new Color(0.55f, 0.62f, 0.68f, 0.85f);
+                    string loadout = i < shortLoadouts.Length ? shortLoadouts[i] : string.Empty;
+                    levelSelectLabels[i].text = unlocked
+                        ? $"{data.SectorName}   •   [{badge}]\n{loadout}"
+                        : $"{data.SectorName}   •   [{badge}]";
+                    levelSelectLabels[i].color = completed
+                        ? new Color(0.45f, 1f, 0.68f, 1f)
+                        : (unlocked ? Color.white : new Color(0.50f, 0.56f, 0.62f, 0.8f));
                 }
 
                 if (levelSelectButtons[i] != null)
