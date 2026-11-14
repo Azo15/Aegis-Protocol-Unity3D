@@ -78,7 +78,10 @@ namespace AegisProtocol.UI
         private float castleUnderAttackTimer;
         private int lastAnnouncedWave;
         private float waveAlertTimer;
-        private Text[] upgradeCardTexts = Array.Empty<Text>();
+        private Text upgradeHeaderText;
+        private readonly UpgradeCardView[] upgradeCards = new UpgradeCardView[3];
+        private float upgradeAnimElapsed;
+        private bool upgradeAnimActive;
         private Slider mechHealthBar;
         private Slider reactorHealthBar;
         private Slider heatBar;
@@ -158,6 +161,7 @@ namespace AegisProtocol.UI
             }
 
             UpdateHud();
+            UpdateUpgradeScreenAnimations();
         }
 
         private void BuildRuntimeCanvas()
@@ -538,15 +542,138 @@ namespace AegisProtocol.UI
 
         private void BuildUpgradeScreen(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 1060f, 900f);
-            CreateText(content, "DALGA YÜKSELTME SEÇİMİ", 38, AccentColor, 64f, FontStyle.Bold);
-            CreateText(content, "Bir modül seç: tıklayın veya 1 / 2 / 3 tuşuna basın.", 20, Color.white, 46f, FontStyle.Normal);
-            upgradeCardTexts = new Text[3];
-            for (int i = 0; i < upgradeCardTexts.Length; i++)
+            Transform content = CreateVerticalContent(parent, 1260f, 650f);
+            upgradeHeaderText = CreateText(content, "★  ÖDÜL SEÇİMİ  ★", 42, new Color(1f, 0.86f, 0.25f, 1f), 58f, FontStyle.Bold);
+            CreateText(content, "Bir güçlendirme seç  •  Tıkla veya [1] [2] [3] tuşlarına bas", 19, new Color(0.76f, 0.90f, 0.98f, 0.92f), 32f, FontStyle.Normal);
+
+            GameObject cardsRow = new GameObject("UpgradeCardsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            cardsRow.transform.SetParent(content, false);
+            HorizontalLayoutGroup rowLayout = cardsRow.GetComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = 28f;
+            rowLayout.padding = new RectOffset(8, 8, 12, 8);
+            rowLayout.childAlignment = TextAnchor.MiddleCenter;
+            rowLayout.childControlWidth = true;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandWidth = true;
+            rowLayout.childForceExpandHeight = true;
+            LayoutElement rowElement = cardsRow.GetComponent<LayoutElement>();
+            rowElement.minHeight = 430f;
+            rowElement.preferredHeight = 430f;
+            rowElement.flexibleWidth = 1f;
+
+            for (int i = 0; i < upgradeCards.Length; i++)
+                upgradeCards[i] = CreateUpgradeCard(cardsRow.transform, i);
+        }
+
+        private UpgradeCardView CreateUpgradeCard(Transform parent, int optionIndex)
+        {
+            GameObject cardObj = new GameObject($"UpgradeCard_{optionIndex + 1}", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline), typeof(UpgradeCardHoverEffect));
+            cardObj.transform.SetParent(parent, false);
+            Image bgImage = cardObj.GetComponent<Image>();
+            bgImage.sprite = runtimeWhiteSprite;
+            bgImage.color = new Color(0.03f, 0.07f, 0.14f, 0.96f);
+
+            Outline border = cardObj.GetComponent<Outline>();
+            border.effectColor = AccentColor;
+            border.effectDistance = new Vector2(3f, -3f);
+
+            Button button = cardObj.GetComponent<Button>();
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+            colors.pressedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            button.colors = colors;
+            button.onClick.AddListener(() => SelectUpgrade(optionIndex));
+
+            UpgradeCardHoverEffect hover = cardObj.GetComponent<UpgradeCardHoverEffect>();
+
+            VerticalLayoutGroup layout = cardObj.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(20, 20, 18, 22);
+            layout.spacing = 12f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+
+            // Top key badge: [1] / [2] / [3]
+            GameObject keyBadgeObj = new GameObject("KeyBadge", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            keyBadgeObj.transform.SetParent(cardObj.transform, false);
+            Image keyBadgeImage = keyBadgeObj.GetComponent<Image>();
+            keyBadgeImage.sprite = runtimeWhiteSprite;
+            keyBadgeImage.color = AccentColor;
+            keyBadgeImage.raycastTarget = false;
+            LayoutElement keyLayout = keyBadgeObj.GetComponent<LayoutElement>();
+            keyLayout.minHeight = 36f;
+            keyLayout.preferredHeight = 36f;
+            Text keyText = CreateCenteredChildText(keyBadgeObj.transform, $"SEÇENEK  [ {optionIndex + 1} ]", 17, new Color(0.02f, 0.05f, 0.10f, 1f), FontStyle.Bold);
+
+            // Big icon frame
+            GameObject iconBoxObj = new GameObject("IconBox", typeof(RectTransform), typeof(Image), typeof(Outline), typeof(LayoutElement));
+            iconBoxObj.transform.SetParent(cardObj.transform, false);
+            Image iconBoxImage = iconBoxObj.GetComponent<Image>();
+            iconBoxImage.sprite = runtimeWhiteSprite;
+            iconBoxImage.color = new Color(0.06f, 0.16f, 0.24f, 0.95f);
+            iconBoxImage.raycastTarget = false;
+            Outline iconOutline = iconBoxObj.GetComponent<Outline>();
+            iconOutline.effectColor = new Color(1f, 1f, 1f, 0.25f);
+            iconOutline.effectDistance = new Vector2(2f, -2f);
+            LayoutElement iconLayout = iconBoxObj.GetComponent<LayoutElement>();
+            iconLayout.minHeight = 132f;
+            iconLayout.preferredHeight = 132f;
+            Text iconText = CreateCenteredChildText(iconBoxObj.transform, "★", 68, Color.white, FontStyle.Bold);
+
+            // Stat boost pill
+            GameObject statPillObj = new GameObject("StatPill", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            statPillObj.transform.SetParent(cardObj.transform, false);
+            Image statPillImage = statPillObj.GetComponent<Image>();
+            statPillImage.sprite = runtimeWhiteSprite;
+            statPillImage.color = new Color(0.15f, 0.75f, 0.45f, 1f);
+            statPillImage.raycastTarget = false;
+            LayoutElement statLayout = statPillObj.GetComponent<LayoutElement>();
+            statLayout.minHeight = 42f;
+            statLayout.preferredHeight = 42f;
+            Text statText = CreateCenteredChildText(statPillObj.transform, "+%20 GÜÇ", 20, new Color(0.02f, 0.05f, 0.10f, 1f), FontStyle.Bold);
+
+            // Short title + 1-line description
+            Text titleText = CreateText(cardObj.transform, "MODÜL", 23, Color.white, 42f, FontStyle.Bold);
+            Text descText = CreateText(cardObj.transform, "Kısa açıklama", 16, new Color(0.84f, 0.92f, 0.98f, 0.92f), 74f, FontStyle.Normal);
+
+            return new UpgradeCardView
             {
-                int optionIndex = i;
-                upgradeCardTexts[i] = AddButton(content, "Kart yükleniyor...", () => SelectUpgrade(optionIndex), 170f, 19);
-            }
+                Root = cardObj.GetComponent<RectTransform>(),
+                Background = bgImage,
+                Border = border,
+                KeyBadge = keyBadgeImage,
+                KeyText = keyText,
+                IconBox = iconBoxImage,
+                IconText = iconText,
+                StatPill = statPillImage,
+                StatText = statText,
+                TitleText = titleText,
+                DescriptionText = descText,
+                Hover = hover
+            };
+        }
+
+        private Text CreateCenteredChildText(Transform parent, string value, int fontSize, Color color, FontStyle style)
+        {
+            GameObject labelObj = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            labelObj.transform.SetParent(parent, false);
+            RectTransform rect = labelObj.GetComponent<RectTransform>();
+            Stretch(rect);
+            Text text = labelObj.GetComponent<Text>();
+            text.font = runtimeFont;
+            text.text = value;
+            text.fontSize = fontSize;
+            text.color = color;
+            text.fontStyle = style;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            return text;
         }
 
         private void BuildHud(Transform parent)
@@ -862,12 +989,128 @@ namespace AegisProtocol.UI
         private void HandleUpgradeOptionsPresented(UpgradeModuleCardConfig[] cards)
         {
             presentedCards = cards ?? Array.Empty<UpgradeModuleCardConfig>();
-            for (int i = 0; i < upgradeCardTexts.Length; i++)
+            upgradeAnimElapsed = 0f;
+            upgradeAnimActive = true;
+
+            for (int i = 0; i < upgradeCards.Length; i++)
             {
-                if (i < presentedCards.Length && presentedCards[i] != null)
-                    upgradeCardTexts[i].text = $"{i + 1}.  {presentedCards[i].DisplayName}\n\n{presentedCards[i].Description}";
-                else
-                    upgradeCardTexts[i].text = "KART YOK";
+                UpgradeCardView cardView = upgradeCards[i];
+                if (cardView == null)
+                    continue;
+
+                bool hasCard = i < presentedCards.Length && presentedCards[i] != null;
+                cardView.Root.gameObject.SetActive(hasCard);
+                if (!hasCard)
+                    continue;
+
+                UpgradeModuleCardConfig config = presentedCards[i];
+                UpgradeCardStyle style = GetUpgradeCardStyle(config.ModuleType);
+
+                cardView.Background.color = new Color(style.Accent.r * 0.14f, style.Accent.g * 0.14f, style.Accent.b * 0.16f, 0.96f);
+                cardView.Border.effectColor = style.Accent;
+                cardView.KeyBadge.color = style.Accent;
+                cardView.KeyText.text = $"SEÇENEK  [ {i + 1} ]";
+                cardView.IconBox.color = new Color(style.Accent.r * 0.25f, style.Accent.g * 0.25f, style.Accent.b * 0.28f, 0.98f);
+                cardView.IconText.text = style.Icon;
+                cardView.IconText.color = style.Accent;
+                cardView.StatPill.color = style.Accent;
+                cardView.StatText.text = style.StatBadge;
+                cardView.TitleText.text = style.ShortTitle;
+                cardView.TitleText.color = Color.white;
+                cardView.DescriptionText.text = style.ShortSummary;
+                cardView.Root.localScale = Vector3.zero;
+                if (cardView.Hover != null)
+                    cardView.Hover.ResetHover();
+            }
+        }
+
+        private void UpdateUpgradeScreenAnimations()
+        {
+            if (upgradePanel == null || !upgradePanel.activeSelf)
+                return;
+
+            if (upgradeHeaderText != null)
+            {
+                float pulse = 1f + 0.035f * Mathf.Sin(Time.unscaledTime * 4.5f);
+                upgradeHeaderText.rectTransform.localScale = new Vector3(pulse, pulse, 1f);
+                float glow = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f);
+                upgradeHeaderText.color = Color.Lerp(new Color(1f, 0.78f, 0.2f, 1f), new Color(1f, 0.96f, 0.65f, 1f), glow);
+            }
+
+            if (upgradeAnimActive)
+                upgradeAnimElapsed += Time.unscaledDeltaTime;
+
+            for (int i = 0; i < upgradeCards.Length; i++)
+            {
+                UpgradeCardView cardView = upgradeCards[i];
+                if (cardView == null || !cardView.Root.gameObject.activeSelf)
+                    continue;
+
+                float delay = i * 0.09f;
+                float t = Mathf.Clamp01((upgradeAnimElapsed - delay) / 0.28f);
+                float popScale = t < 1f
+                    ? Mathf.Lerp(0f, 1f, 1f - Mathf.Pow(1f - t, 3f)) + 0.12f * Mathf.Sin(t * Mathf.PI)
+                    : 1f;
+
+                float hoverScale = cardView.Hover != null ? cardView.Hover.CurrentScale : 1f;
+                float finalScale = popScale * hoverScale;
+                cardView.Root.localScale = new Vector3(finalScale, finalScale, 1f);
+            }
+        }
+
+        private static UpgradeCardStyle GetUpgradeCardStyle(UpgradeModuleType moduleType)
+        {
+            switch (moduleType)
+            {
+                case UpgradeModuleType.OverchargedCapacitors:
+                    return new UpgradeCardStyle(
+                        new Color(1f, 0.42f, 0.18f, 1f),
+                        "★",
+                        "+%20 HASAR",
+                        "PLAZMA GÜCÜ",
+                        "Top ve füzeler %20 daha sert vurur.");
+                case UpgradeModuleType.PlasmaCoolant:
+                    return new UpgradeCardStyle(
+                        new Color(0.18f, 0.88f, 1f, 1f),
+                        "❖",
+                        "-%25 ISINMA",
+                        "SOĞUTMA ÇEKİRDEĞİ",
+                        "Silahlar %25 daha geç ısınır.");
+                case UpgradeModuleType.TitaniumArmor:
+                    return new UpgradeCardStyle(
+                        new Color(0.24f, 0.92f, 0.48f, 1f),
+                        "✚",
+                        "+100 ZIRH & CAN",
+                        "TİTANYUM ZIRH",
+                        "Maksimum canı artırır ve robotu onarır.");
+                case UpgradeModuleType.TurretOverclock:
+                    return new UpgradeCardStyle(
+                        new Color(1f, 0.80f, 0.16f, 1f),
+                        "▲",
+                        "+%25 KULE HIZI",
+                        "KULE HIZLANDIRICI",
+                        "Tüm savunma kuleleri %25 hızlı ateş eder.");
+                case UpgradeModuleType.MagneticPull:
+                    return new UpgradeCardStyle(
+                        new Color(0.76f, 0.40f, 1f, 1f),
+                        "◈",
+                        "+%50 ÇEKİM",
+                        "MANYETİK ÇEKİM",
+                        "Enerji kristallerini çok daha uzaktan çeker.");
+                case UpgradeModuleType.ThrusterBoost:
+                    return new UpgradeCardStyle(
+                        new Color(0.22f, 0.96f, 0.82f, 1f),
+                        "►",
+                        "+%15 HIZ",
+                        "İTİCİ GÜÇLENDİRME",
+                        "Robot hareket ve manevra hızını artırır.");
+                default:
+                    return new UpgradeCardStyle(
+                        AccentColor,
+                        "★",
+                        "+GÜÇLENDİRME",
+                        "MODÜL",
+                        "Savaş sistemlerini güçlendirir.");
             }
         }
 
@@ -1220,6 +1463,67 @@ namespace AegisProtocol.UI
         {
             int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
             return $"{total / 60:00}:{total % 60:00}";
+        }
+
+        private sealed class UpgradeCardView
+        {
+            public RectTransform Root;
+            public Image Background;
+            public Outline Border;
+            public Image KeyBadge;
+            public Text KeyText;
+            public Image IconBox;
+            public Text IconText;
+            public Image StatPill;
+            public Text StatText;
+            public Text TitleText;
+            public Text DescriptionText;
+            public UpgradeCardHoverEffect Hover;
+        }
+
+        private readonly struct UpgradeCardStyle
+        {
+            public readonly Color Accent;
+            public readonly string Icon;
+            public readonly string StatBadge;
+            public readonly string ShortTitle;
+            public readonly string ShortSummary;
+
+            public UpgradeCardStyle(Color accent, string icon, string statBadge, string shortTitle, string shortSummary)
+            {
+                Accent = accent;
+                Icon = icon;
+                StatBadge = statBadge;
+                ShortTitle = shortTitle;
+                ShortSummary = shortSummary;
+            }
+        }
+
+        private sealed class UpgradeCardHoverEffect : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            private float targetScale = 1f;
+            public float CurrentScale { get; private set; } = 1f;
+
+            public void ResetHover()
+            {
+                targetScale = 1f;
+                CurrentScale = 1f;
+            }
+
+            public void OnPointerEnter(PointerEventData eventData)
+            {
+                targetScale = 1.06f;
+            }
+
+            public void OnPointerExit(PointerEventData eventData)
+            {
+                targetScale = 1f;
+            }
+
+            private void Update()
+            {
+                CurrentScale = Mathf.MoveTowards(CurrentScale, targetScale, Time.unscaledDeltaTime * 6f);
+            }
         }
     }
 }
