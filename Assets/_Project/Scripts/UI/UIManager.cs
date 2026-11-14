@@ -16,8 +16,8 @@ namespace AegisProtocol.UI
     [DisallowMultipleComponent]
     public sealed class UIManager : MonoBehaviour
     {
-        private static readonly Color BackgroundColor = new Color(0.015f, 0.035f, 0.075f, 0.78f);
-        private static readonly Color PanelColor = new Color(0.025f, 0.09f, 0.15f, 0.96f);
+        private static readonly Color BackgroundColor = new Color(0.015f, 0.035f, 0.075f, 0.93f);
+        private static readonly Color PanelColor = new Color(0.025f, 0.09f, 0.15f, 0.98f);
         private static readonly Color AccentColor = new Color(0.05f, 0.85f, 1f, 1f);
 
         private GameManager gameManager;
@@ -393,17 +393,15 @@ namespace AegisProtocol.UI
 
         private void BuildHowToPlay(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 820f, 660f);
-            CreateText(content, "KONTROLLER & PUANLAR", 34, AccentColor, 56f, FontStyle.Bold);
+            Transform content = CreateVerticalContent(parent, 680f, 500f);
+            CreateText(content, "KONTROLLER", 36, AccentColor, 56f, FontStyle.Bold);
             CreateText(content,
-                "[WASD / Oklar] Hareket  •  [Space] Dash  •  [H] İlaç (+Can)\n" +
-                "[Fare] Nişan & Ateş (Sol: Tüfek / Sağ: Füze)\n" +
-                "[C] Kamera Açısı  •  [Q / R] Döndür  •  [Tekerlek] Yakınlaştır\n" +
-                "[1] Lazer (50)  •  [2] EMP (75)  •  [3] Onarım (100)  •  [E] Kule Kur\n" +
-                "[F] Fener  •  [Esc / P] Duraklat\n\n" +
-                "Puan: Drone +50 | Tank +100 | Robot +250 | Boss +1500 | Uydu +500",
-                20, Color.white, 290f, FontStyle.Normal);
-            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 56f);
+                "WASD / Oklar   →   Hareket\n" +
+                "Fare (Sol / Sağ)   →   Ateş & Füze\n" +
+                "C  /  Space  /  H   →   Kamera  •  Dash  •  İlaç\n" +
+                "1 - 2 - 3  +  E   →   Savunma Kulesi Kur",
+                22, Color.white, 200f, FontStyle.Normal);
+            AddButton(content, "GERİ", () => SetVisibleState(stateBeforeAuxiliaryPanel), 54f);
         }
 
         private void BuildSettings(Transform parent)
