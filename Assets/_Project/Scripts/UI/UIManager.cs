@@ -239,9 +239,20 @@ namespace AegisProtocol.UI
             CreateText(content, "AEGIS PROTOCOL", 52, AccentColor, 82f, FontStyle.Bold);
             CreateText(content, "3D TACTICAL MECH & BASE DEFENSE", 20, Color.white, 44f, FontStyle.Bold);
             AddButton(content, "▶ OYNA", ShowLevelSelectPanel, 64f);
-            AddButton(content, "KONTROLLER & PUANLAR", () => ShowAuxiliaryPanel(howToPanel), 56f);
+            AddButton(content, "KONTROLLER", () => ShowAuxiliaryPanel(howToPanel), 56f);
             AddButton(content, "SES AYARLARI", () => ShowAuxiliaryPanel(settingsPanel), 56f);
-            AddButton(content, "ÇIKIŞ", Application.Quit, 56f);
+#if !UNITY_WEBGL || UNITY_EDITOR
+            AddButton(content, "ÇIKIŞ", QuitGame, 56f);
+#endif
+        }
+
+        private static void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private void BuildLevelSelect(Transform parent)
