@@ -16,6 +16,7 @@ namespace AegisProtocol.UI
         private float elapsed;
         private Color baseColor;
         private Camera cachedCamera;
+        private Vector3 baseScale = Vector3.one * 0.014f;
 
         private static Font sharedFont;
 
@@ -98,6 +99,12 @@ namespace AegisProtocol.UI
                 float alpha = Mathf.Clamp01(1f - Mathf.Pow(elapsed / lifetime, 1.8f));
                 popupText.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
             }
+
+            float popT = Mathf.Clamp01(elapsed / 0.16f);
+            float scaleFactor = popT < 1f
+                ? Mathf.Lerp(0.65f, 1.22f, popT)
+                : Mathf.Lerp(1.22f, 1f, Mathf.Clamp01((elapsed - 0.16f) / 0.14f));
+            transform.localScale = baseScale * scaleFactor;
         }
     }
 }

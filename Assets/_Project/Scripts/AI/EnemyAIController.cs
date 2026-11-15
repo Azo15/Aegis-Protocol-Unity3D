@@ -5,6 +5,7 @@ using UnityEngine.AI;
 using AegisProtocol.Combat;
 using AegisProtocol.Core;
 using AegisProtocol.Systems;
+using AegisProtocol.UI;
 
 namespace AegisProtocol.AI
 {
@@ -293,6 +294,21 @@ namespace AegisProtocol.AI
                 GameManager.Instance.AddScore(archetype.ScoreReward);
                 if (archetype.IsBoss)
                     GameManager.Instance.RegisterFinalBossDefeated();
+            }
+
+            if (archetype.ScoreReward > 0)
+            {
+                string scoreLabel = archetype.IsBoss
+                    ? $"★ +{archetype.ScoreReward} BOSS! ★"
+                    : $"+{archetype.ScoreReward} PUAN";
+                Color scoreColor = archetype.IsBoss
+                    ? new Color(1f, 0.85f, 0.15f, 1f)
+                    : new Color(0.35f, 0.96f, 1f, 1f);
+                FloatingCombatText.SpawnPopup(
+                    transform.position + Vector3.up * (archetype.IsBoss ? 3.2f : 2.1f),
+                    scoreLabel,
+                    scoreColor,
+                    archetype.IsBoss ? 30 : 21);
             }
 
             if (energyCrystalPrefab != null && archetype.CrystalDropAmount > 0)
