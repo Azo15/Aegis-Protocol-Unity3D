@@ -77,6 +77,9 @@ namespace AegisProtocol.UI
         private Text crystalText;
         private Text cameraModeText;
         private Text cockpitCrosshairText;
+        private GameObject waveAlertBanner;
+        private Image waveAlertBg;
+        private Outline waveAlertOutline;
         private Text waveAlertText;
         private Text castleUnderAttackText;
         private DamageVignetteOverlay damageVignette;
@@ -784,15 +787,22 @@ namespace AegisProtocol.UI
             TacticalMinimapHUD minimap = parent.gameObject.AddComponent<TacticalMinimapHUD>();
             minimap.BuildRadar(parent, runtimeWhiteSprite, runtimeFont);
 
-            waveAlertText = CreateHudText(
-                parent,
-                string.Empty,
-                new Vector2(0f, -88f),
-                new Vector2(0.5f, 1f),
-                25,
-                TextAnchor.UpperCenter);
-            waveAlertText.GetComponent<RectTransform>().sizeDelta = new Vector2(920f, 54f);
-            waveAlertText.gameObject.SetActive(false);
+            waveAlertBanner = new GameObject("WaveAlertBanner", typeof(RectTransform), typeof(Image), typeof(Outline));
+            waveAlertBanner.transform.SetParent(parent, false);
+            RectTransform bannerRect = waveAlertBanner.GetComponent<RectTransform>();
+            bannerRect.anchorMin = bannerRect.anchorMax = new Vector2(0.5f, 1f);
+            bannerRect.pivot = new Vector2(0.5f, 1f);
+            bannerRect.anchoredPosition = new Vector2(0f, -76f);
+            bannerRect.sizeDelta = new Vector2(780f, 54f);
+            waveAlertBg = waveAlertBanner.GetComponent<Image>();
+            waveAlertBg.sprite = runtimeWhiteSprite;
+            waveAlertBg.color = new Color(0.02f, 0.08f, 0.14f, 0.88f);
+            waveAlertBg.raycastTarget = false;
+            waveAlertOutline = waveAlertBanner.GetComponent<Outline>();
+            waveAlertOutline.effectColor = AccentColor;
+            waveAlertOutline.effectDistance = new Vector2(2f, -2f);
+            waveAlertText = CreateCenteredChildText(waveAlertBanner.transform, string.Empty, 23, AccentColor, FontStyle.Bold);
+            waveAlertBanner.SetActive(false);
 
             damageVignette = parent.gameObject.AddComponent<DamageVignetteOverlay>();
             damageVignette.BuildOverlay(parent);
@@ -908,38 +918,70 @@ namespace AegisProtocol.UI
                 if (currentWave != lastAnnouncedWave && gameManager.CurrentState == GameState.WaveActive)
                 {
                     lastAnnouncedWave = currentWave;
-                    waveAlertTimer = 3.8f;
-                    if (waveAlertText != null)
+                    waveAlertTimer = 3.2f;
+                    if (waveAlertBanner != null && waveAlertText != null)
                     {
-                        waveAlertText.gameObject.SetActive(true);
+                        waveAlertBanner.SetActive(true);
+                        waveAlertBanner.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
                         if (currentWave == 5)
                         {
-                            waveAlertText.color = new Color(1f, 0.25f, 0.2f, 1f);
-                            waveAlertText.text = "⚠ DİKKAT: SON DALGA (5/5) — OVERLORD TITAN BOSS SALDIRIYOR! ⚠";
+                            waveAlertBg.color = new Color(0.24f, 0.03f, 0.04f, 0.92f);
+                            waveAlertOutline.effectColor = new Color(1f, 0.25f, 0.2f, 1f);
+                            waveAlertText.color = new Color(1f, 0.88f, 0.22f, 1f);
+                            waveAlertText.text = "☠ SON DALGA (5/5) — OVERLORD TITAN BOSS TESPİT EDİLDİ! ☠";
                         }
                         else if (currentWave == 3)
                         {
-                            waveAlertText.color = new Color(1f, 0.78f, 0.2f, 1f);
-                            waveAlertText.text = "⚡ DALGA 3/5: GECE FIRTINASI & KAMİKAZE BASKINI BAŞLADI! ⚡";
+                            waveAlertBg.color = new Color(0.18f, 0.11f, 0.02f, 0.90f);
+                            waveAlertOutline.effectColor = new Color(1f, 0.78f, 0.2f, 1f);
+                            waveAlertText.color = new Color(1f, 0.88f, 0.35f, 1f);
+                            waveAlertText.text = "⚡ DALGA 3/5: GECE FIRTINASI & KAMİKAZE BASKINI! ⚡";
                         }
                         else
                         {
-                            waveAlertText.color = new Color(0.25f, 0.95f, 1f, 1f);
+                            waveAlertBg.color = new Color(0.02f, 0.09f, 0.16f, 0.90f);
+                            waveAlertOutline.effectColor = new Color(0.22f, 0.92f, 1f, 1f);
+                            waveAlertText.color = Color.white;
                             waveAlertText.text = $"⚔ DALGA {currentWave}/5 BAŞLADI — KALEYİ SAVUN! ⚔";
                         }
                     }
                 }
 
-                if (waveAlertTimer > 0f && waveAlertText != null)
+                if (waveAlertTimer > 0f && waveAlertBanner != null)
                 {
                     waveAlertTimer = Mathf.Max(0f, waveAlertTimer - Time.deltaTime);
-                    if (lastAnnouncedWave == 5)
+                    float elapsedAlert = 3.2f - waveAlertTimer;
+                    float pop = elapsedAlert < 0.24f
+                        ? Mathf.Lerp(0.6f, 1.06f, elapsedAlert / 0.24f)
+                        : (elapsedAlert < 0.36f ? Mathf.Lerp(1.06f, 1f, (elapsedAlert - 0.24f) / 0.12f) : 1f);
+                    waveAlertBanner.transform.localScale = new Vector3(pop, pop, 1f);
+
+                    float fade = waveAlertTimer < 0.4f ? Mathf.Clamp01(waveAlertTimer / 0.4f) : 1f;
+                    if (lastAnnouncedWave == 5 && waveAlertOutline != null)
                     {
-                        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 9f);
-                        waveAlertText.color = Color.Lerp(new Color(1f, 0.2f, 0.15f, 1f), new Color(1f, 0.92f, 0.2f, 1f), pulse);
+                        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 10f);
+                        Color bossBorder = Color.Lerp(new Color(1f, 0.2f, 0.15f, 1f), new Color(1f, 0.88f, 0.2f, 1f), pulse);
+                        waveAlertOutline.effectColor = new Color(bossBorder.r, bossBorder.g, bossBorder.b, fade);
                     }
+                    else if (waveAlertOutline != null)
+                    {
+                        Color c = waveAlertOutline.effectColor;
+                        waveAlertOutline.effectColor = new Color(c.r, c.g, c.b, fade);
+                    }
+
+                    if (waveAlertBg != null)
+                    {
+                        Color bg = waveAlertBg.color;
+                        waveAlertBg.color = new Color(bg.r, bg.g, bg.b, 0.90f * fade);
+                    }
+                    if (waveAlertText != null)
+                    {
+                        Color tc = waveAlertText.color;
+                        waveAlertText.color = new Color(tc.r, tc.g, tc.b, fade);
+                    }
+
                     if (waveAlertTimer <= 0f)
-                        waveAlertText.gameObject.SetActive(false);
+                        waveAlertBanner.SetActive(false);
                 }
 
                 int remainingEnemies = waveSpawner != null ? waveSpawner.ActiveEnemyCount : 0;
