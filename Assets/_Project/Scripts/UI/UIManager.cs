@@ -49,9 +49,16 @@ namespace AegisProtocol.UI
         private Text resultBadgeText;
         private Text resultTitle;
         private Text resultDetails;
+        private Text resultStatScoreText;
+        private Text resultStatTimeText;
+        private Text resultStatWaveText;
         private GameObject resultUnlockBox;
         private Text resultUnlockText;
         private Image resultTopBannerImage;
+        private Outline resultPanelOutline;
+        private RectTransform resultContentRect;
+        private float resultAnimElapsed;
+        private bool resultAnimVictory;
         private GameObject nextLevelButtonObject;
         private Text nextLevelButtonText;
         private Button[] levelSelectButtons = Array.Empty<Button>();
@@ -162,6 +169,7 @@ namespace AegisProtocol.UI
 
             UpdateHud();
             UpdateUpgradeScreenAnimations();
+            UpdateResultScreenAnimations();
         }
 
         private void BuildRuntimeCanvas()
@@ -465,70 +473,113 @@ namespace AegisProtocol.UI
 
         private void BuildResultScreen(Transform parent)
         {
-            Transform content = CreateVerticalContent(parent, 980f, 920f);
+            Transform content = CreateVerticalContent(parent, 860f, 590f);
+            resultContentRect = content.GetComponent<RectTransform>();
+            resultPanelOutline = content.gameObject.AddComponent<Outline>();
+            resultPanelOutline.effectColor = new Color(1f, 0.82f, 0.22f, 0.95f);
+            resultPanelOutline.effectDistance = new Vector2(3f, -3f);
 
             GameObject bannerObj = new GameObject("Celebration Top Banner", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             bannerObj.transform.SetParent(content, false);
             LayoutElement bannerLayout = bannerObj.GetComponent<LayoutElement>();
-            bannerLayout.minHeight = 68f;
-            bannerLayout.preferredHeight = 68f;
+            bannerLayout.minHeight = 56f;
+            bannerLayout.preferredHeight = 56f;
             resultTopBannerImage = bannerObj.GetComponent<Image>();
             resultTopBannerImage.sprite = runtimeWhiteSprite;
-            resultTopBannerImage.color = new Color(0.85f, 0.62f, 0.08f, 0.95f);
+            resultTopBannerImage.color = new Color(0.95f, 0.74f, 0.14f, 0.98f);
+            resultBadgeText = CreateCenteredChildText(bannerObj.transform, "★  TEBRİKLER KOMUTAN!  ★", 26, new Color(0.05f, 0.08f, 0.12f, 1f), FontStyle.Bold);
 
-            GameObject badgeTextObj = new GameObject("Badge Text", typeof(RectTransform), typeof(Text));
-            badgeTextObj.transform.SetParent(bannerObj.transform, false);
-            Stretch(badgeTextObj.GetComponent<RectTransform>());
-            resultBadgeText = badgeTextObj.GetComponent<Text>();
-            resultBadgeText.font = runtimeFont;
-            resultBadgeText.fontSize = 26;
-            resultBadgeText.fontStyle = FontStyle.Bold;
-            resultBadgeText.color = new Color(0.05f, 0.08f, 0.12f, 1f);
-            resultBadgeText.alignment = TextAnchor.MiddleCenter;
-            resultBadgeText.text = "★ ★ ★   TEBRİKLER KOMUTAN — ZAFER MADALYASI   ★ ★ ★";
+            resultTitle = CreateText(content, "KUSURSUZ ZAFER!", 40, new Color(0.3f, 1f, 0.65f, 1f), 50f, FontStyle.Bold);
+            resultDetails = CreateText(content, string.Empty, 18, new Color(0.84f, 0.93f, 0.98f, 0.92f), 28f, FontStyle.Normal);
 
-            resultTitle = CreateText(content, "GÖREV SONUCU", 36, AccentColor, 58f, FontStyle.Bold);
-            resultDetails = CreateText(content, string.Empty, 21, Color.white, 175f, FontStyle.Normal);
+            // 3 compact stat cards side by side
+            GameObject statsRow = new GameObject("ResultStatsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            statsRow.transform.SetParent(content, false);
+            HorizontalLayoutGroup statsLayout = statsRow.GetComponent<HorizontalLayoutGroup>();
+            statsLayout.spacing = 16f;
+            statsLayout.childControlWidth = true;
+            statsLayout.childControlHeight = true;
+            statsLayout.childForceExpandWidth = true;
+            statsLayout.childForceExpandHeight = true;
+            LayoutElement statsRowElem = statsRow.GetComponent<LayoutElement>();
+            statsRowElem.minHeight = 96f;
+            statsRowElem.preferredHeight = 96f;
 
-            resultUnlockBox = new GameObject("Unlock Reward Box", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            resultStatScoreText = CreateStatCard(statsRow.transform, "★ SKOR", "0", new Color(1f, 0.82f, 0.25f, 1f));
+            resultStatTimeText = CreateStatCard(statsRow.transform, "◆ SÜRE", "00:00", new Color(0.25f, 0.88f, 1f, 1f));
+            resultStatWaveText = CreateStatCard(statsRow.transform, "✓ DALGA", "5/5", new Color(0.32f, 0.96f, 0.62f, 1f));
+
+            resultUnlockBox = new GameObject("Unlock Reward Box", typeof(RectTransform), typeof(Image), typeof(Outline), typeof(LayoutElement));
             resultUnlockBox.transform.SetParent(content, false);
             LayoutElement unlockLayout = resultUnlockBox.GetComponent<LayoutElement>();
-            unlockLayout.minHeight = 128f;
-            unlockLayout.preferredHeight = 128f;
+            unlockLayout.minHeight = 92f;
+            unlockLayout.preferredHeight = 92f;
             Image unlockBg = resultUnlockBox.GetComponent<Image>();
             unlockBg.sprite = runtimeWhiteSprite;
-            unlockBg.color = new Color(0.06f, 0.24f, 0.32f, 0.96f);
+            unlockBg.color = new Color(0.06f, 0.20f, 0.28f, 0.96f);
+            Outline unlockOutline = resultUnlockBox.GetComponent<Outline>();
+            unlockOutline.effectColor = new Color(1f, 0.84f, 0.25f, 0.85f);
+            unlockOutline.effectDistance = new Vector2(2f, -2f);
+            resultUnlockText = CreateCenteredChildText(resultUnlockBox.transform, string.Empty, 20, new Color(1f, 0.92f, 0.42f, 1f), FontStyle.Bold);
+            resultUnlockText.lineSpacing = 1.25f;
 
-            GameObject unlockTextObj = new GameObject("Unlock Text", typeof(RectTransform), typeof(Text));
-            unlockTextObj.transform.SetParent(resultUnlockBox.transform, false);
-            Stretch(unlockTextObj.GetComponent<RectTransform>());
-            resultUnlockText = unlockTextObj.GetComponent<Text>();
-            resultUnlockText.font = runtimeFont;
-            resultUnlockText.fontSize = 20;
-            resultUnlockText.fontStyle = FontStyle.Bold;
-            resultUnlockText.color = new Color(1f, 0.92f, 0.35f, 1f);
-            resultUnlockText.alignment = TextAnchor.MiddleCenter;
-            resultUnlockText.lineSpacing = 1.22f;
-
-            nextLevelButtonText = AddButton(content, "► SONRAKİ SEVİYEYE GEÇ", AdvanceToNextLevel, 64f, 23);
+            nextLevelButtonText = AddButton(content, "► SONRAKİ SEVİYE", AdvanceToNextLevel, 56f, 22);
             nextLevelButtonObject = nextLevelButtonText.transform.parent.gameObject;
             Image nextBtnImg = nextLevelButtonObject.GetComponent<Image>();
             if (nextBtnImg != null)
-                nextBtnImg.color = new Color(0.08f, 0.48f, 0.26f, 1f);
+                nextBtnImg.color = new Color(0.08f, 0.52f, 0.28f, 1f);
             Button nextBtn = nextLevelButtonObject.GetComponent<Button>();
             if (nextBtn != null)
             {
                 ColorBlock cb = nextBtn.colors;
-                cb.normalColor = new Color(0.08f, 0.48f, 0.26f, 1f);
-                cb.highlightedColor = new Color(0.14f, 0.68f, 0.36f, 1f);
+                cb.normalColor = new Color(0.08f, 0.52f, 0.28f, 1f);
+                cb.highlightedColor = new Color(0.14f, 0.72f, 0.38f, 1f);
                 cb.pressedColor = new Color(0.2f, 0.85f, 0.45f, 1f);
                 cb.selectedColor = cb.highlightedColor;
                 nextBtn.colors = cb;
             }
 
-            AddButton(content, "BU SEVİYEYİ TEKRAR OYNA", RestartCurrentScene, 54f, 20);
-            AddButton(content, "SEVİYE & SEKTÖR SEÇİMİ", ShowLevelSelectPanel, 54f, 20);
-            AddButton(content, "ANA MENÜ", ReturnToMainMenu, 50f, 20);
+            // Compact action buttons side by side
+            GameObject actionsRow = new GameObject("ResultActionsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            actionsRow.transform.SetParent(content, false);
+            HorizontalLayoutGroup actionsLayout = actionsRow.GetComponent<HorizontalLayoutGroup>();
+            actionsLayout.spacing = 14f;
+            actionsLayout.childControlWidth = true;
+            actionsLayout.childControlHeight = true;
+            actionsLayout.childForceExpandWidth = true;
+            actionsLayout.childForceExpandHeight = true;
+            LayoutElement actionsElem = actionsRow.GetComponent<LayoutElement>();
+            actionsElem.minHeight = 52f;
+            actionsElem.preferredHeight = 52f;
+
+            AddButton(actionsRow.transform, "TEKRAR OYNA", RestartCurrentScene, 52f, 19);
+            AddButton(actionsRow.transform, "SEKTÖRLER", ShowLevelSelectPanel, 52f, 19);
+            AddButton(actionsRow.transform, "ANA MENÜ", ReturnToMainMenu, 52f, 19);
+        }
+
+        private Text CreateStatCard(Transform parent, string label, string initialValue, Color accentColor)
+        {
+            GameObject cardObj = new GameObject("StatCard_" + label, typeof(RectTransform), typeof(Image), typeof(Outline), typeof(VerticalLayoutGroup));
+            cardObj.transform.SetParent(parent, false);
+            Image bg = cardObj.GetComponent<Image>();
+            bg.sprite = runtimeWhiteSprite;
+            bg.color = new Color(accentColor.r * 0.10f, accentColor.g * 0.12f, accentColor.b * 0.14f, 0.95f);
+
+            Outline outline = cardObj.GetComponent<Outline>();
+            outline.effectColor = new Color(accentColor.r, accentColor.g, accentColor.b, 0.65f);
+            outline.effectDistance = new Vector2(2f, -2f);
+
+            VerticalLayoutGroup layout = cardObj.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(10, 10, 10, 10);
+            layout.spacing = 4f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+
+            CreateText(cardObj.transform, label, 15, accentColor, 22f, FontStyle.Bold);
+            return CreateText(cardObj.transform, initialValue, 24, Color.white, 34f, FontStyle.Bold);
         }
 
         private void AdvanceToNextLevel()
@@ -1158,22 +1209,34 @@ namespace AegisProtocol.UI
 
             bool victory = state == GameState.Victory;
             bool hasNext = victory && gameManager.HasNextLevel;
+            resultAnimElapsed = 0f;
+            resultAnimVictory = victory;
+            if (resultContentRect != null)
+                resultContentRect.localScale = Vector3.zero;
+
             if (nextLevelButtonObject != null)
                 nextLevelButtonObject.SetActive(hasNext);
+
+            if (resultPanelOutline != null)
+            {
+                resultPanelOutline.effectColor = victory
+                    ? new Color(1f, 0.82f, 0.22f, 0.95f)
+                    : new Color(0.95f, 0.24f, 0.22f, 0.95f);
+            }
 
             if (resultTopBannerImage != null)
             {
                 resultTopBannerImage.color = victory
-                    ? new Color(0.95f, 0.72f, 0.12f, 0.98f)
-                    : new Color(0.75f, 0.15f, 0.15f, 0.96f);
+                    ? new Color(0.96f, 0.75f, 0.14f, 0.98f)
+                    : new Color(0.78f, 0.16f, 0.16f, 0.96f);
             }
 
             if (resultBadgeText != null)
             {
                 resultBadgeText.color = victory ? new Color(0.06f, 0.08f, 0.12f, 1f) : Color.white;
                 resultBadgeText.text = victory
-                    ? $"★ ★ ★   TEBRİKLER KOMUTAN! SEVİYE {gameManager.CurrentLevel} ZAFERİ!   ★ ★ ★"
-                    : $"[ ! ]   SİSTEM UYARISI — SEVİYE {gameManager.CurrentLevel} SAVUNMASI DÜŞTÜ   [ ! ]";
+                    ? $"★  TEBRİKLER KOMUTAN! • SEVİYE {gameManager.CurrentLevel}  ★"
+                    : $"[ ! ]  SAVUNMA DÜŞTÜ • SEVİYE {gameManager.CurrentLevel}  [ ! ]";
             }
 
             if (resultUnlockBox != null)
@@ -1185,40 +1248,63 @@ namespace AegisProtocol.UI
                 {
                     SectorLevelData nextData = SectorLevelConfig.GetLevel(gameManager.CurrentLevel + 1);
                     if (nextLevelButtonText != null)
-                        nextLevelButtonText.text = $"► SONRAKİ SEVİYEYE GEÇ ({nextData.SectorName}) ◄";
+                        nextLevelButtonText.text = $"► SONRAKİ SEVİYE: {nextData.SectorName}";
 
                     resultUnlockText.text =
-                        $"★ YENİ SEVİYE VE YENİ SİLAH EVRİMİ AÇILDI! ★\n" +
-                        $"► AÇILAN SEKTÖR: {nextData.SectorName} ({nextData.Subtitle})\n" +
-                        $"► YENİ {nextData.WeaponEvolutionTitle}\n" +
-                        $"► YENİ {nextData.SpecialPerkTitle}";
+                        $"★ SEVİYE {gameManager.CurrentLevel + 1} KİLİDİ AÇILDI ★\n" +
+                        $"{nextData.SectorName}  •  {nextData.WeaponEvolutionTitle}";
                 }
                 else
                 {
                     resultUnlockText.text =
-                        "★ ★ ★   EFSANEVİ KOMUTAN MADALYASI KAZANILDI!   ★ ★ ★\n" +
-                        "Tüm 5 Sektörü ve Overlord Ana Üssünü Başarıyla Kurtardın!";
+                        "★ EFSANEVİ KOMUTAN MADALYASI ★\n" +
+                        "Tüm 5 Sektör Başarıyla Kurtarıldı!";
                 }
             }
 
             resultTitle.text = victory
-                ? (hasNext
-                    ? $"♦ SEVİYE {gameManager.CurrentLevel} TAMAMLANDI  •  SEVİYE {gameManager.CurrentLevel + 1} KİLİDİ AÇILDI! ♦"
-                    : "★ TÜM 5 SEKTÖR KURTARILDI: KUSURSUZ ZAFER! ★")
-                : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ OLDU";
-            resultTitle.color = victory ? new Color(0.3f, 1f, 0.65f, 1f) : new Color(1f, 0.35f, 0.3f);
+                ? (hasNext ? $"SEVİYE {gameManager.CurrentLevel} TAMAMLANDI!" : "KUSURSUZ ZAFER!")
+                : $"SEVİYE {gameManager.CurrentLevel} BAŞARISIZ";
+            resultTitle.color = victory ? new Color(0.30f, 1f, 0.65f, 1f) : new Color(1f, 0.35f, 0.32f, 1f);
 
-            string reasonLine = victory
-                ? "✓ BAŞARI RAPORU: 5 Dalgadaki Tüm Düşmanlar Yok Edildi ve Kuantum Reaktörü Korundu!"
+            resultDetails.text = victory
+                ? $"{gameManager.CurrentLevelData.SectorName} Güvende!"
                 : (!string.IsNullOrEmpty(gameManager.FailureReason)
                     ? gameManager.FailureReason
-                    : "KAYBETME NEDENİ: Robot veya Reaktör Canı Sıfırlandı!");
+                    : "Robot veya Reaktör Canı Sıfırlandı.");
 
-            resultDetails.text =
-                $"{reasonLine}\n\n" +
-                $"★ TAMAMLANAN SEKTÖR: {gameManager.CurrentLevelData.SectorName}\n" +
-                $"★ TOPLAM SKOR: {gameManager.TotalScore:N0} PUAN   |   GEÇEN SÜRE: {FormatTime(gameManager.ElapsedSeconds)}\n" +
-                $"★ SAVUNULAN DALGA: {gameManager.CompletedWaves}/5   |   BONUS UYDU HACK: {gameManager.CompletedTerminals}/3";
+            if (resultStatScoreText != null)
+                resultStatScoreText.text = gameManager.TotalScore.ToString("N0");
+            if (resultStatTimeText != null)
+                resultStatTimeText.text = FormatTime(gameManager.ElapsedSeconds);
+            if (resultStatWaveText != null)
+                resultStatWaveText.text = $"{gameManager.CompletedWaves}/5  •  {gameManager.CompletedTerminals}/3 Uydu";
+        }
+
+        private void UpdateResultScreenAnimations()
+        {
+            if (resultPanel == null || !resultPanel.activeSelf)
+                return;
+
+            resultAnimElapsed += Time.unscaledDeltaTime;
+
+            if (resultContentRect != null)
+            {
+                float t = Mathf.Clamp01(resultAnimElapsed / 0.30f);
+                float pop = t < 1f
+                    ? Mathf.Lerp(0f, 1f, 1f - Mathf.Pow(1f - t, 3f)) + 0.08f * Mathf.Sin(t * Mathf.PI)
+                    : 1f;
+                resultContentRect.localScale = new Vector3(pop, pop, 1f);
+            }
+
+            if (resultAnimVictory && resultTopBannerImage != null)
+            {
+                float shimmer = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4.5f);
+                resultTopBannerImage.color = Color.Lerp(
+                    new Color(0.90f, 0.68f, 0.12f, 0.98f),
+                    new Color(1f, 0.86f, 0.28f, 1f),
+                    shimmer);
+            }
         }
 
         private void ShowAuxiliaryPanel(GameObject panel)
