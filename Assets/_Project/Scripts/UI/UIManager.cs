@@ -88,6 +88,9 @@ namespace AegisProtocol.UI
         private float castleUnderAttackTimer;
         private int lastAnnouncedWave;
         private float waveAlertTimer;
+        private int lastCrystalBalance = -1;
+        private float crystalPulseTimer;
+        private Color crystalPulseColor = Color.white;
         private Text upgradeHeaderText;
         private readonly UpgradeCardView[] upgradeCards = new UpgradeCardView[3];
         private float upgradeAnimElapsed;
@@ -1013,7 +1016,33 @@ namespace AegisProtocol.UI
             }
 
             if (resourceBank != null)
-                crystalText.text = $"KRİSTAL: {resourceBank.CurrentBalance}";
+            {
+                int balance = resourceBank.CurrentBalance;
+                if (lastCrystalBalance >= 0 && balance != lastCrystalBalance)
+                {
+                    crystalPulseTimer = 0.28f;
+                    crystalPulseColor = balance > lastCrystalBalance
+                        ? new Color(0.25f, 1f, 0.72f, 1f)
+                        : new Color(1f, 0.72f, 0.22f, 1f);
+                }
+
+                lastCrystalBalance = balance;
+                crystalText.text = $"KRİSTAL: {balance}";
+
+                if (crystalPulseTimer > 0f)
+                {
+                    crystalPulseTimer = Mathf.Max(0f, crystalPulseTimer - Time.deltaTime);
+                    float t = crystalPulseTimer / 0.28f;
+                    float scale = 1f + 0.26f * Mathf.Sin(t * Mathf.PI);
+                    crystalText.rectTransform.localScale = new Vector3(scale, scale, 1f);
+                    crystalText.color = Color.Lerp(Color.white, crystalPulseColor, t);
+                }
+                else
+                {
+                    crystalText.rectTransform.localScale = Vector3.one;
+                    crystalText.color = Color.white;
+                }
+            }
             if (buildManager != null)
                 buildSelectionText.text = $"[1] Lazer 50  •  [2] EMP 75  •  [3] Onarım 100  •  [H] İlaç";
             if (interactionScanner != null)
